@@ -20,6 +20,8 @@ from api.ws_dashboard import router as ws_dashboard_router
 from database import SessionLocal
 from services.pricing_service import ensure_quantanium_price
 from api.price_history import router as history_router
+from api import market, price_history
+from api import market, price_history, production
 
 
 @asynccontextmanager
@@ -89,7 +91,11 @@ app.include_router(dashboard_router, prefix="/dashboard", tags=["Dashboard"])
 app.include_router(pricing_router, tags=["Pricing"])  # Already has /pricing prefix
 app.include_router(market_router, prefix="/market", tags=["Market"])  # ✅ NOUVEAU
 app.include_router(history_router, prefix="/history", tags=["Price History"])
-
+app.include_router(market.router)
+app.include_router(price_history.router)
+app.include_router(market.router)
+app.include_router(price_history.router)
+app.include_router(production.router) 
 
 # ============================================================================
 # WEBSOCKET ROUTES

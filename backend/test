@@ -1,0 +1,32 @@
+from database import SessionLocal
+from models.market_price import MarketPrice
+from models.material import Material
+from models.location import Location
+
+db = SessionLocal()
+
+# Trouver des IDs valides
+material = db.query(Material).first()
+location = db.query(Location).first()
+
+print(f"Material ID: {material.id}, Name: {material.name}")
+print(f"Location ID: {location.id}, Name: {location.name}")
+
+# Test d'insertion avec des IDs RÉELS
+test_price = MarketPrice(
+    material_id=178,  # ✅ ID réel
+    location_id=178,  # ✅ ID réel
+    buy_price=999, 
+    sell_price=1500, 
+    source="PYTHON_TEST"
+)
+db.add(test_price)
+db.commit()
+
+print("✅ Test réussi !")
+
+# Vérifier
+count = db.query(MarketPrice).count()
+print(f"Count: {count}")
+
+db.close()

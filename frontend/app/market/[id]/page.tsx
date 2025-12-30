@@ -1,10 +1,12 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { TrendingUp, TrendingDown, Minus, Activity, MapPin, DollarSign, Package, Clock, Filter, X, Search } from "lucide-react";
+import { TrendingUp, TrendingDown, Minus, Activity, MapPin, DollarSign, Package, Clock, Filter, X, Search, ArrowUpDown } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 const API_URL = "http://127.0.0.1:8000";
+
+type SortOption = "name-asc" | "name-desc" | "price-asc" | "price-desc" | "variation-asc" | "variation-desc" | "locations";
 
 interface Material {
   id: number;
@@ -248,16 +250,17 @@ function MaterialCell({ material, isSelected, onClick }: {
 }
 
 export default function MarketPage() {
+  const router = useRouter();
   const [materials, setMaterials] = useState<Material[]>([]);
   const [filteredMaterials, setFilteredMaterials] = useState<Material[]>([]);
   const [selectedMaterial, setSelectedMaterial] = useState<Material | null>(null);
   const [loading, setLoading] = useState(true);
   const [mounted, setMounted] = useState(false);
-  const router = useRouter();
   
   // Filtres
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState<string>("");
+  const [sortOption, setSortOption] = useState<SortOption>("name-asc");
 
   useEffect(() => {
     setMounted(true);
@@ -296,7 +299,7 @@ export default function MarketPage() {
     return () => clearInterval(timer);
   }, [mounted, selectedMaterial]);
 
-  // Appliquer les filtres
+  // Appliquer les filtres ET le tri
   useEffect(() => {
     let filtered = materials;
     
@@ -314,8 +317,30 @@ export default function MarketPage() {
       );
     }
     
-    setFilteredMaterials(filtered);
-  }, [selectedCategory, searchQuery, materials]);
+    // Tri
+    const sorted = [...filtered].sort((a, b) => {
+      switch (sortOption) {
+        case "name-asc":
+          return a.name.localeCompare(b.name);
+        case "name-desc":
+          return b.name.localeCompare(a.name);
+        case "price-asc":
+          return (a.avg_sell_price || 0) - (b.avg_sell_price || 0);
+        case "price-desc":
+          return (b.avg_sell_price || 0) - (a.avg_sell_price || 0);
+        case "variation-asc":
+          return a.variation - b.variation;
+        case "variation-desc":
+          return b.variation - a.variation;
+        case "locations":
+          return b.available_at - a.available_at;
+        default:
+          return 0;
+      }
+    });
+    
+    setFilteredMaterials(sorted);
+  }, [selectedCategory, searchQuery, sortOption, materials]);
 
   if (!mounted || loading) {
     return (
@@ -351,9 +376,19 @@ export default function MarketPage() {
   const largeChartData = selectedMaterial ? generateMiniChartData(selectedMaterial.variation) : [];
   const categories = ["all", ...Array.from(new Set(materials.map(m => m.category)))];
 
+  const sortOptions: {value: SortOption, label: string}[] = [
+    { value: "name-asc", label: "Nom (A-Z)" },
+    { value: "name-desc", label: "Nom (Z-A)" },
+    { value: "price-asc", label: "Prix ↑" },
+    { value: "price-desc", label: "Prix ↓" },
+    { value: "variation-desc", label: "Top gainers" },
+    { value: "variation-asc", label: "Top losers" },
+    { value: "locations", label: "Plus disponible" },
+  ];
+
   return (
     <div style={{ padding: '32px', maxWidth: '1800px' }}>
-      {/* HEADER */}
+      {/* HEADER - identique */}
       <div style={{
         marginBottom: '40px',
         position: 'relative',
@@ -436,7 +471,7 @@ export default function MarketPage() {
         }} />
       </div>
 
-      {/* FILTRES ET RECHERCHE */}
+      {/* FILTRES, RECHERCHE ET TRI */}
       <div style={{
         display: 'flex',
         gap: '16px',
@@ -446,8 +481,9 @@ export default function MarketPage() {
         {/* Recherche */}
         <div style={{
           position: 'relative',
-          flex: '1 1 300px',
-          minWidth: '250px'
+          flex: '1 1 250px',
+          minWidth: '200px',
+          maxWidth: '400px'
         }}>
           <Search style={{
             position: 'absolute',
@@ -461,7 +497,7 @@ export default function MarketPage() {
           }} />
           <input
             type="text"
-            placeholder="Rechercher un matériau..."
+            placeholder="Rechercher..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             style={{
@@ -508,24 +544,67 @@ export default function MarketPage() {
           )}
         </div>
 
+        {/* Menu TRI - ✅ NOUVEAU */}
+        <div style={{
+          position: 'relative',
+          flex: '0 0 auto'
+        }}>
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            padding: '12px 16px',
+            background: 'rgba(0, 0, 0, 0.4)',
+            border: '1px solid rgba(82, 82, 91, 0.3)',
+            borderRadius: '6px',
+            cursor: 'pointer'
+          }}>
+            <ArrowUpDown style={{ width: '16px', height: '16px', color: '#71717a' }} />
+            <select
+              value={sortOption}
+              onChange={(e) => setSortOption(e.target.value as SortOption)}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                color: 'white',
+                fontSize: '12px',
+                fontWeight: 600,
+                textTransform: 'uppercase',
+                letterSpacing: '1px',
+                cursor: 'pointer',
+                outline: 'none',
+                fontFamily: 'monospace'
+              }}
+            >
+              {sortOptions.map(opt => (
+                <option key={opt.value} value={opt.value} style={{ background: '#0a0e1a' }}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
         {/* Filtres catégories */}
         <div style={{
           display: 'flex',
           gap: '8px',
-          flexWrap: 'wrap'
+          flexWrap: 'wrap',
+          alignItems: 'center'
         }}>
           <div style={{
             display: 'flex',
             alignItems: 'center',
             gap: '8px',
             color: '#71717a',
-            fontSize: '12px',
+            fontSize: '11px',
             letterSpacing: '1px',
             textTransform: 'uppercase',
-            fontWeight: 600
+            fontWeight: 600,
+            whiteSpace: 'nowrap'
           }}>
-            <Filter style={{ width: '16px', height: '16px' }} />
-            CATÉGORIE:
+            <Filter style={{ width: '14px', height: '14px' }} />
+            CAT:
           </div>
           {categories.map(cat => (
             <button
@@ -560,13 +639,13 @@ export default function MarketPage() {
                 }
               }}
             >
-              {cat === "all" ? "Tous" : cat}
+              {cat === "all" ? "TOUS" : cat.toUpperCase()}
             </button>
           ))}
         </div>
       </div>
 
-      {/* GRID DE MATÉRIAUX */}
+      {/* GRID - identique, juste le reste du code... */}
       <div style={{
         display: 'grid',
         gridTemplateColumns: 'repeat(auto-fill, minmax(90px, 1fr))',
@@ -592,329 +671,6 @@ export default function MarketPage() {
           letterSpacing: '2px'
         }}>
           AUCUN MATÉRIAU TROUVÉ
-        </div>
-      )}
-
-      {/* ZONE D'ANALYSE */}
-      {selectedMaterial && (
-        <div style={{
-          background: 'linear-gradient(135deg, rgba(6, 182, 212, 0.03) 0%, rgba(0, 0, 0, 0.5) 100%)',
-          border: '1px solid rgba(6, 182, 212, 0.2)',
-          borderRadius: '12px',
-          padding: '32px',
-          position: 'relative',
-          overflow: 'hidden'
-        }}>
-          <div style={{
-            position: 'absolute',
-            top: '-100px',
-            right: '-100px',
-            width: '200px',
-            height: '200px',
-            background: 'radial-gradient(circle, rgba(6, 182, 212, 0.15) 0%, transparent 70%)',
-            pointerEvents: 'none'
-          }} />
-
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            marginBottom: '32px',
-            position: 'relative',
-            zIndex: 1
-          }}>
-            <div>
-              <h2 style={{
-                fontSize: '32px',
-                fontWeight: 700,
-                color: 'white',
-                letterSpacing: '3px',
-                textTransform: 'uppercase',
-                margin: 0,
-                marginBottom: '8px'
-              }}>
-                {selectedMaterial.name}
-              </h2>
-              <div style={{
-                fontSize: '13px',
-                color: '#71717a',
-                letterSpacing: '2px',
-                textTransform: 'uppercase'
-              }}>
-                {selectedMaterial.category}
-              </div>
-            </div>
-            
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '12px',
-              padding: '16px 24px',
-              background: selectedMaterial.variation > 1 
-                ? 'rgba(16, 185, 129, 0.1)' 
-                : selectedMaterial.variation < -1 
-                  ? 'rgba(239, 68, 68, 0.1)' 
-                  : 'rgba(113, 113, 122, 0.1)',
-              border: `2px solid ${
-                selectedMaterial.variation > 1 
-                  ? '#10b981' 
-                  : selectedMaterial.variation < -1 
-                    ? '#ef4444' 
-                    : '#71717a'
-              }`,
-              borderRadius: '8px'
-            }}>
-              {selectedMaterial.variation > 1 ? (
-                <TrendingUp style={{ width: '24px', height: '24px', color: '#10b981' }} />
-              ) : selectedMaterial.variation < -1 ? (
-                <TrendingDown style={{ width: '24px', height: '24px', color: '#ef4444' }} />
-              ) : (
-                <Minus style={{ width: '24px', height: '24px', color: '#71717a' }} />
-              )}
-              <div style={{
-                fontSize: '28px',
-                fontWeight: 700,
-                color: selectedMaterial.variation > 1 
-                  ? '#10b981' 
-                  : selectedMaterial.variation < -1 
-                    ? '#ef4444' 
-                    : '#71717a',
-                fontFamily: 'monospace'
-              }}>
-                {selectedMaterial.variation > 0 ? '+' : ''}{selectedMaterial.variation.toFixed(2)}%
-              </div>
-            </div>
-          </div>
-
-          {/* Graphique principal */}
-          <div style={{
-            background: 'rgba(0, 0, 0, 0.4)',
-            border: '1px solid rgba(6, 182, 212, 0.2)',
-            borderRadius: '8px',
-            padding: '24px',
-            marginBottom: '32px',
-            height: '200px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            position: 'relative',
-            zIndex: 1
-          }}>
-            <svg width="100%" height="180" style={{ display: 'block' }}>
-              <defs>
-                <linearGradient id="mainGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                  <stop offset="0%" style={{ 
-                    stopColor: selectedMaterial.variation > 1 ? '#10b981' : selectedMaterial.variation < -1 ? '#ef4444' : '#06b6d4', 
-                    stopOpacity: 0.4 
-                  }} />
-                  <stop offset="100%" style={{ 
-                    stopColor: selectedMaterial.variation > 1 ? '#10b981' : selectedMaterial.variation < -1 ? '#ef4444' : '#06b6d4', 
-                    stopOpacity: 0 
-                  }} />
-                </linearGradient>
-              </defs>
-              
-              {[0, 1, 2, 3, 4].map(i => (
-                <line
-                  key={i}
-                  x1="0"
-                  y1={i * 45}
-                  x2="100%"
-                  y2={i * 45}
-                  stroke="rgba(6, 182, 212, 0.1)"
-                  strokeWidth="1"
-                  strokeDasharray="4 4"
-                />
-              ))}
-              
-              {(() => {
-                const max = Math.max(...largeChartData);
-                const min = Math.min(...largeChartData);
-                const range = max - min || 1;
-                const width = 1600;
-                
-                const points = largeChartData.map((value, i) => {
-                  const x = (i / (largeChartData.length - 1)) * width;
-                  const y = 180 - ((value - min) / range) * 160;
-                  return `${x},${y}`;
-                }).join(" ");
-                
-                const color = selectedMaterial.variation > 1 ? '#10b981' : selectedMaterial.variation < -1 ? '#ef4444' : '#06b6d4';
-                
-                return (
-                  <>
-                    <path
-                      d={`M 0,180 L ${points} L ${width},180 Z`}
-                      fill="url(#mainGradient)"
-                    />
-                    
-                    <polyline
-                      points={points}
-                      fill="none"
-                      stroke={color}
-                      strokeWidth="3"
-                      style={{ filter: `drop-shadow(0 0 8px ${color})` }}
-                    />
-                  </>
-                );
-              })()}
-            </svg>
-          </div>
-
-          {/* Informations détaillées */}
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: '1fr 1fr',
-            gap: '24px',
-            position: 'relative',
-            zIndex: 1
-          }}>
-            {/* Prix d'achat le plus bas */}
-            <div style={{
-              background: 'rgba(239, 68, 68, 0.05)',
-              border: '1px solid rgba(239, 68, 68, 0.3)',
-              borderRadius: '8px',
-              padding: '24px'
-            }}>
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '12px',
-                marginBottom: '16px'
-              }}>
-                <DollarSign style={{ width: '20px', height: '20px', color: '#ef4444' }} />
-                <div style={{
-                  fontSize: '12px',
-                  color: '#71717a',
-                  letterSpacing: '2px',
-                  textTransform: 'uppercase',
-                  fontWeight: 600
-                }}>
-                  MEILLEUR PRIX D'ACHAT
-                </div>
-              </div>
-              
-              {selectedMaterial.min_buy_price ? (
-                <>
-                  <div style={{
-                    fontSize: '36px',
-                    fontWeight: 700,
-                    color: '#ef4444',
-                    fontFamily: 'monospace',
-                    marginBottom: '12px',
-                    textShadow: '0 0 20px rgba(239, 68, 68, 0.5)'
-                  }}>
-                    {selectedMaterial.min_buy_price.toLocaleString()}
-                    <span style={{ fontSize: '16px', marginLeft: '8px', color: '#71717a' }}>
-                      aUEC
-                    </span>
-                  </div>
-                  
-                  {selectedMaterial.best_buy_location && (
-                    <div style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '8px',
-                      fontSize: '13px',
-                      color: '#a1a1aa'
-                    }}>
-                      <MapPin style={{ width: '14px', height: '14px' }} />
-                      <div>
-                        <div style={{ fontWeight: 600, color: 'white' }}>
-                          {selectedMaterial.best_buy_location.name}
-                        </div>
-                        <div style={{ fontSize: '11px', color: '#52525b', fontFamily: 'monospace' }}>
-                          {selectedMaterial.best_buy_location.full_path}
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </>
-              ) : (
-                <div style={{
-                  fontSize: '24px',
-                  fontWeight: 700,
-                  color: '#3f3f46',
-                  fontFamily: 'monospace'
-                }}>
-                  - -
-                </div>
-              )}
-            </div>
-
-            {/* Prix de vente le plus haut */}
-            <div style={{
-              background: 'rgba(16, 185, 129, 0.05)',
-              border: '1px solid rgba(16, 185, 129, 0.3)',
-              borderRadius: '8px',
-              padding: '24px'
-            }}>
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '12px',
-                marginBottom: '16px'
-              }}>
-                <DollarSign style={{ width: '20px', height: '20px', color: '#10b981' }} />
-                <div style={{
-                  fontSize: '12px',
-                  color: '#71717a',
-                  letterSpacing: '2px',
-                  textTransform: 'uppercase',
-                  fontWeight: 600
-                }}>
-                  MEILLEUR PRIX DE VENTE
-                </div>
-              </div>
-              
-              {selectedMaterial.max_sell_price ? (
-                <>
-                  <div style={{
-                    fontSize: '36px',
-                    fontWeight: 700,
-                    color: '#10b981',
-                    fontFamily: 'monospace',
-                    marginBottom: '12px',
-                    textShadow: '0 0 20px rgba(16, 185, 129, 0.5)'
-                  }}>
-                    {selectedMaterial.max_sell_price.toLocaleString()}
-                    <span style={{ fontSize: '16px', marginLeft: '8px', color: '#71717a' }}>
-                      aUEC
-                    </span>
-                  </div>
-                  
-                  {selectedMaterial.best_sell_location && (
-                    <div style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '8px',
-                      fontSize: '13px',
-                      color: '#a1a1aa'
-                    }}>
-                      <MapPin style={{ width: '14px', height: '14px' }} />
-                      <div>
-                        <div style={{ fontWeight: 600, color: 'white' }}>
-                          {selectedMaterial.best_sell_location.name}
-                        </div>
-                        <div style={{ fontSize: '11px', color: '#52525b', fontFamily: 'monospace' }}>
-                          {selectedMaterial.best_sell_location.full_path}
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </>
-              ) : (
-                <div style={{
-                  fontSize: '24px',
-                  fontWeight: 700,
-                  color: '#3f3f46',
-                  fontFamily: 'monospace'
-                }}>
-                  - -
-                </div>
-              )}
-            </div>
-          </div>
         </div>
       )}
 

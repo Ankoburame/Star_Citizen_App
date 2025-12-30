@@ -1,14 +1,13 @@
 """
-Script pour rafraîchir les prix des matériaux sur tous les marchés depuis UEX.
-Récupère les prix d'achat et de vente pour chaque matériau à chaque location.
+Script pour rafraîchir les prix moyens depuis UEX API v2.0.
+Stocke les prix moyens globaux dans une location virtuelle "UEX_AVG".
 
-Ce script devrait être exécuté régulièrement (cron job) pour maintenir les prix à jour.
+L'API UEX v2.0 ne fournit plus de prix par terminal individuel,
+seulement des moyennes globales par commodity.
 
 Usage:
     python scripts/refresh_market_prices.py                    # Refresh complet
     python scripts/refresh_market_prices.py --dry-run         # Test sans modification
-    python scripts/refresh_market_prices.py --material Gold   # Refresh un seul matériau
-    python scripts/refresh_market_prices.py --clean-old       # Supprime les vieux prix (>7j)
 """
 
 import sys
@@ -37,142 +36,86 @@ HEADERS = {
 }
 
 
-def fetch_commodity_prices(commodity_code: str) -> List[Dict[str, Any]]:
+def fetch_all_commodities() -> List[Dict[str, Any]]:
     """
-    Récupère les prix d'un matériau sur tous les terminaux depuis UEX.
+    Récupère tous les commodities avec leurs prix moyens depuis UEX.
     
-    Args:
-        commodity_code: Code UEX du matériau (ex: "gold", "quantanium")
-        
     Returns:
-        Liste des prix par terminal
+        Liste des commodities avec prix moyens
         
     Raises:
         RuntimeError: Si l'API UEX retourne une erreur
     """
-    url = f"{UEX_API_BASE_URL}/commodities/{commodity_code}/prices"
-    
-    response = requests.get(url, headers=HEADERS, timeout=30)
-    
-    if response.status_code == 404:
-        # Matériau non trouvé dans UEX
-        return []
-    
-    if response.status_code != 200:
-        raise RuntimeError(
-            f"UEX API error for {commodity_code}: {response.status_code}"
-        )
-    
-    prices = response.json().get("data", [])
-    return prices
-
-
-def fetch_all_prices() -> Dict[str, List[Dict[str, Any]]]:
-    """
-    Récupère tous les prix de tous les matériaux depuis UEX.
-    
-    UEX ne fournit pas d'endpoint global pour tous les prix,
-    donc on récupère les prix matériau par matériau.
-    
-    Returns:
-        Dictionnaire {material_code: [prices]}
-    """
-    # D'abord, récupérer la liste de tous les commodities
     url = f"{UEX_API_BASE_URL}/commodities"
     
-    print("🌐 Fetching commodities list from UEX...")
+    print("🌐 Fetching commodities with average prices from UEX...")
     response = requests.get(url, headers=HEADERS, timeout=30)
     
     if response.status_code != 200:
         raise RuntimeError(f"UEX API error: {response.status_code}")
     
     commodities = response.json().get("data", [])
-    print(f"✅ Found {len(commodities)} commodities")
+    print(f"✅ Found {len(commodities)} commodities with average prices")
     
-    # Maintenant, récupérer les prix pour chaque commodity
-    print("🌐 Fetching prices for each commodity...")
-    prices_by_material = {}
-    errors = 0
-    
-    for i, commodity in enumerate(commodities, 1):
-        commodity_code = commodity.get("code", "").lower()
-        if not commodity_code:
-            continue
-        
-        # Afficher la progression tous les 20 matériaux
-        if i % 20 == 0:
-            print(f"  Progress: {i}/{len(commodities)} commodities processed...")
-        
-        try:
-            # Récupérer les prix pour ce commodity
-            price_url = f"{UEX_API_BASE_URL}/commodities/{commodity_code}/prices"
-            price_response = requests.get(price_url, headers=HEADERS, timeout=10)
-            
-            if price_response.status_code == 404:
-                # Commodity sans prix, pas grave
-                continue
-            
-            if price_response.status_code != 200:
-                errors += 1
-                continue
-            
-            prices = price_response.json().get("data", [])
-            if prices:
-                prices_by_material[commodity_code] = prices
-                
-        except requests.exceptions.Timeout:
-            errors += 1
-            continue
-        except Exception as e:
-            errors += 1
-            continue
-    
-    print(f"✅ Received prices for {len(prices_by_material)} commodities")
-    if errors > 0:
-        print(f"⚠️  {errors} errors occurred while fetching prices")
-    
-    return prices_by_material
+    return commodities
 
 
-def normalize_material_name(uex_name: str) -> str:
+def find_material_in_db(uex_code: str, uex_name: str, materials_dict: Dict) -> Optional[Material]:
     """
-    Normalise le nom d'un matériau UEX pour matcher avec notre DB.
+    Trouve un matériau dans la DB en utilisant plusieurs stratégies de matching.
     
     Args:
-        uex_name: Nom depuis UEX
+        uex_code: Code depuis UEX (ex: "AGRI")
+        uex_name: Nom depuis UEX (ex: "Agricium")
+        materials_dict: Dictionnaire des matériaux {name_lower: material}
         
     Returns:
-        Nom normalisé
+        Material trouvé ou None
     """
-    # Supprimer les suffixes communs
-    name = uex_name.replace(" (Ore)", "").replace(" (Raw)", "")
-    name = name.replace(" - Refined", "").strip()
+    # Stratégie 1: Match exact par nom
+    if uex_name.lower() in materials_dict:
+        return materials_dict[uex_name.lower()]
     
-    return name
+    # Stratégie 2: Match partiel (enlever suffixes comme "(Ore)")
+    clean_name = uex_name.replace(" (Ore)", "").replace(" (Raw)", "").replace(" - Refined", "").strip()
+    if clean_name.lower() in materials_dict:
+        return materials_dict[clean_name.lower()]
+    
+    # Stratégie 3: Fuzzy match
+    for db_name, material in materials_dict.items():
+        if db_name in uex_name.lower() or uex_name.lower() in db_name:
+            return material
+    
+    return None
 
 
 def update_market_prices(
     db: Session,
-    dry_run: bool = False,
-    specific_material: Optional[str] = None
+    dry_run: bool = False
 ) -> Dict[str, int]:
     """
-    Met à jour les prix du market depuis UEX.
+    Met à jour les prix moyens depuis UEX dans la location virtuelle UEX_AVG.
     
     Args:
         db: Session SQLAlchemy
         dry_run: Si True, affiche ce qui serait fait sans modifier la DB
-        specific_material: Si spécifié, ne met à jour que ce matériau
         
     Returns:
         Statistiques d'import
     """
-    # Charger tous les matériaux et locations de la DB
+    # Charger tous les matériaux
     materials = {m.name.lower(): m for m in db.query(Material).all()}
-    locations = {loc.code.lower(): loc for loc in db.query(Location).all()}
+    
+    # Trouver la location virtuelle UEX_AVG
+    uex_avg_location = db.query(Location).filter(Location.code == "UEX_AVG").first()
+    
+    if not uex_avg_location:
+        print("❌ Location UEX_AVG not found in DB!")
+        print("Please run the migration: migration_uex_avg_location.sql")
+        return {"added": 0, "updated": 0, "skipped": 0, "errors": 0}
     
     print(f"📦 {len(materials)} materials in DB")
-    print(f"📦 {len(locations)} locations in DB")
+    print(f"📍 Using location: {uex_avg_location.name} (ID: {uex_avg_location.id})")
     
     stats = {
         "added": 0,
@@ -181,94 +124,91 @@ def update_market_prices(
         "errors": 0,
     }
     
-    # Récupérer les prix depuis UEX
-    if specific_material:
-        # Mode single material
-        print(f"\n🔍 Fetching prices for {specific_material}...")
-        material_lower = specific_material.lower()
-        
-        if material_lower not in materials:
-            print(f"❌ Material '{specific_material}' not found in DB")
-            return stats
-        
-        material = materials[material_lower]
-        prices_data = {material_lower: fetch_commodity_prices(material_lower)}
-    else:
-        # Mode all materials
-        prices_data = fetch_all_prices()
+    # Récupérer les commodities depuis UEX
+    commodities = fetch_all_commodities()
     
-    # Traiter chaque matériau
-    for material_code, price_entries in prices_data.items():
-        material_name = normalize_material_name(material_code)
-        material_lower = material_name.lower()
-        
-        # Trouver le matériau dans notre DB
-        if material_lower not in materials:
-            # Essayer avec le code directement
-            if material_code not in materials:
+    materials_matched = 0
+    materials_not_found = 0
+    
+    print("\n🔄 Processing commodities...")
+    
+    # Traiter chaque commodity
+    for i, commodity in enumerate(commodities, 1):
+        try:
+            uex_code = commodity.get("code", "")
+            uex_name = commodity.get("name", "")
+            price_buy = commodity.get("price_buy")
+            price_sell = commodity.get("price_sell")
+            
+            # Afficher progression
+            if i % 20 == 0:
+                print(f"  Progress: {i}/{len(commodities)} commodities processed...")
+            
+            # Skip si pas de prix
+            if not price_buy and not price_sell:
                 stats["skipped"] += 1
                 continue
-            material = materials[material_code]
-        else:
-            material = materials[material_lower]
-        
-        # Traiter chaque prix
-        for price_entry in price_entries:
-            try:
-                terminal_code = price_entry.get("terminal_code", "").lower()
-                
-                if not terminal_code or terminal_code not in locations:
-                    stats["skipped"] += 1
-                    continue
-                
-                location = locations[terminal_code]
-                
-                buy_price = price_entry.get("price_buy")
-                sell_price = price_entry.get("price_sell")
-                
-                # Vérifier si un prix existe déjà
-                existing_price = db.query(MarketPrice).filter(
-                    and_(
-                        MarketPrice.material_id == material.id,
-                        MarketPrice.location_id == location.id
-                    )
-                ).first()
-                
-                if existing_price:
-                    # Mettre à jour
+            
+            # Trouver le matériau dans notre DB
+            material = find_material_in_db(uex_code, uex_name, materials)
+            
+            if not material:
+                materials_not_found += 1
+                stats["skipped"] += 1
+                continue
+            
+            materials_matched += 1
+            
+            # Vérifier si un prix existe déjà pour ce matériau dans UEX_AVG
+            existing_price = db.query(MarketPrice).filter(
+                and_(
+                    MarketPrice.material_id == material.id,
+                    MarketPrice.location_id == uex_avg_location.id
+                )
+            ).first()
+            
+            if existing_price:
+                # Mettre à jour seulement si les prix ont changé
+                if (existing_price.buy_price != price_buy or 
+                    existing_price.sell_price != price_sell):
                     if dry_run:
-                        print(f"  🔄 Would update: {material.name} @ {location.name}")
+                        print(f"  🔄 Would update: {material.name} (buy: {price_buy}, sell: {price_sell})")
                         stats["updated"] += 1
                     else:
-                        existing_price.buy_price = buy_price
-                        existing_price.sell_price = sell_price
-                        existing_price.source = "UEX"
+                        existing_price.buy_price = price_buy
+                        existing_price.sell_price = price_sell
+                        existing_price.source = "UEX_AVG"
                         existing_price.updated_at = datetime.utcnow()
                         stats["updated"] += 1
                 else:
-                    # Créer nouveau
-                    if dry_run:
-                        print(f"  ➕ Would add: {material.name} @ {location.name}")
-                        stats["added"] += 1
-                    else:
-                        new_price = MarketPrice(
-                            material_id=material.id,
-                            location_id=location.id,
-                            buy_price=buy_price,
-                            sell_price=sell_price,
-                            source="UEX",
-                        )
-                        db.add(new_price)
-                        stats["added"] += 1
-            
-            except Exception as e:
-                print(f"❌ Error processing price entry: {e}")
-                stats["errors"] += 1
+                    stats["skipped"] += 1
+            else:
+                # Créer nouveau prix moyen
+                if dry_run:
+                    print(f"  ➕ Would add: {material.name} (buy: {price_buy}, sell: {price_sell})")
+                    stats["added"] += 1
+                else:
+                    new_price = MarketPrice(
+                        material_id=material.id,
+                        location_id=uex_avg_location.id,
+                        buy_price=price_buy,
+                        sell_price=price_sell,
+                        source="UEX_AVG",
+                    )
+                    db.add(new_price)
+                    stats["added"] += 1
+        
+        except Exception as e:
+            print(f"❌ Error processing commodity {commodity.get('name', 'unknown')}: {e}")
+            stats["errors"] += 1
+    
+    print(f"\n📊 Materials matched: {materials_matched}/{len(commodities)}")
+    print(f"📊 Materials not found in DB: {materials_not_found}")
     
     if not dry_run:
         try:
             db.commit()
-            print(f"\n🎉 Market prices updated!")
+            print(f"\n🎉 Market average prices updated!")
         except Exception as e:
             db.rollback()
             print(f"\n❌ Commit failed: {e}")
@@ -328,17 +268,12 @@ def main():
     import argparse
     
     parser = argparse.ArgumentParser(
-        description="Refresh market prices from UEX API"
+        description="Refresh average market prices from UEX API v2.0"
     )
     parser.add_argument(
         "--dry-run",
         action="store_true",
         help="Show what would be updated without making changes"
-    )
-    parser.add_argument(
-        "--material",
-        type=str,
-        help="Only refresh prices for this specific material"
     )
     parser.add_argument(
         "--clean-old",
@@ -358,7 +293,7 @@ def main():
     
     try:
         print("=" * 60)
-        print("MARKET PRICES REFRESH")
+        print("MARKET AVERAGE PRICES REFRESH (UEX v2.0)")
         print("=" * 60)
         
         if args.dry_run:
@@ -369,11 +304,7 @@ def main():
         if args.clean_old:
             clean_old_prices(db, days=args.days, dry_run=args.dry_run)
         else:
-            stats = update_market_prices(
-                db,
-                dry_run=args.dry_run,
-                specific_material=args.material
-            )
+            stats = update_market_prices(db, dry_run=args.dry_run)
             print_stats(stats)
         
     except requests.exceptions.RequestException as e:
