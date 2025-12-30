@@ -1,4 +1,5 @@
 from sqlalchemy import Column, Integer, Float, DateTime, ForeignKey, String
+from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from database import Base
 
@@ -16,3 +17,6 @@ class MarketPrice(Base):
     source = Column(String, nullable=True)
     collected_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, onupdate=func.now())
+    
+    # ✅ AJOUTEZ CETTE LIGNE
+    material = relationship("Material", back_populates="market_prices")

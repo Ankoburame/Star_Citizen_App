@@ -1,8 +1,29 @@
+"""
+Seed script pour importer les matériaux dans la base de données.
+Gère les minéraux, le salvage et les biens commerciaux de Star Citizen.
+"""
+
+import logging
+from typing import List, Tuple
+from sqlalchemy.exc import SQLAlchemyError
+
 from database import SessionLocal
 from models.material import Material
 
-MATERIALS = [
-    # Minage
+# Configuration du logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
+
+# Type alias pour plus de clarté
+MaterialData = Tuple[str, str, str, bool, bool, bool]
+
+# Liste des matériaux à importer
+# Format: (nom, catégorie, unité, minable, salvage, commerce)
+MATERIALS: List[MaterialData] = [
+    # Minéraux minables
     ("Stileron", "mineral", "SCU", True, False, False),
     ("Quantanium", "mineral", "SCU", True, False, False),
     ("Riccite", "mineral", "SCU", True, False, False),
@@ -38,12 +59,12 @@ MATERIALS = [
     ("Jaclium", "mineral", "SCU", True, False, False),
     ("Saldynium", "mineral", "SCU", True, False, False),
 
-    # Salvage
+    # Matériaux de salvage
     ("RMC", "salvage", "SCU", False, True, True),
     ("Scrap", "salvage", "SCU", False, True, True),
     ("Construction Materials", "salvage", "SCU", False, True, True),
 
-    # Commerce (plus tard)
+    # Biens commerciaux
     ("Agricultural Supplies", "trade", "SCU", False, False, True),
     ("Ammonia", "trade", "SCU", False, False, True),
     ("Argon", "trade", "SCU", False, False, True),
@@ -96,20 +117,83 @@ MATERIALS = [
     ("Year Of The Pig Envelope", "trade", "SCU", False, False, True),
 ]
 
-db = SessionLocal()
 
-for name, cat, unit, mine, salv, trade in MATERIALS:
-    if not db.query(Material).filter_by(name=name).first():
-        db.add(Material(
-            name=name,
-            category=cat,
-            unit=unit,
-            is_mineable=mine,
-            is_salvage=salv,
-            is_trade_good=trade
-        ))
+def seed_materials() -> None:
+    """
+    Importe les matériaux dans la base de données.
+    
+    Cette fonction:
+    - Vérifie si chaque matériau existe déjà
+    - N'insère que les nouveaux matériaux
+    - Gère les erreurs de base de données
+    - Affiche un rapport détaillé
+    
+    Raises:
+        SQLAlchemyError: En cas d'erreur de base de données
+    """
+    db = SessionLocal()
+    added_count = 0
+    skipped_count = 0
+    
+    try:
+        logger.info("Début de l'import des matériaux...")
+        
+        for name, category, unit, is_mineable, is_salvage, is_trade_good in MATERIALS:
+            # Vérifier si le matériau existe déjà
+            existing_material = db.query(Material).filter_by(name=name).first()
+            
+            if existing_material:
+                logger.debug(f"Matériau déjà existant: {name}")
+                skipped_count += 1
+                continue
+            
+            # Créer et ajouter le nouveau matériau
+            new_material = Material(
+                name=name,
+                category=category,
+                unit=unit,
+                is_mineable=is_mineable,
+                is_salvage=is_salvage,
+                is_trade_good=is_trade_good
+            )
+            db.add(new_material)
+            logger.debug(f"Matériau ajouté: {name} ({category})")
+            added_count += 1
+        
+        # Commit une seule fois à la fin
+        db.commit()
+        
+        # Rapport final
+        logger.info("=" * 50)
+        logger.info("Rapport d'import des matériaux:")
+        logger.info(f"  ✅ Matériaux ajoutés: {added_count}")
+        logger.info(f"  ⏭️  Matériaux existants ignorés: {skipped_count}")
+        logger.info(f"  📊 Total traité: {len(MATERIALS)}")
+        logger.info("=" * 50)
+        
+        if added_count > 0:
+            logger.info("✅ Import des matériaux terminé avec succès!")
+        else:
+            logger.info("ℹ️  Aucun nouveau matériau à ajouter.")
+            
+    except SQLAlchemyError as e:
+        db.rollback()
+        logger.error(f"❌ Erreur lors de l'import des matériaux: {e}")
+        raise
+        
+    except Exception as e:
+        db.rollback()
+        logger.error(f"❌ Erreur inattendue: {e}")
+        raise
+        
+    finally:
+        db.close()
+        logger.debug("Connexion à la base de données fermée.")
 
-db.commit()
-db.close()
 
-print("✅ Seed materials terminé")
+if __name__ == "__main__":
+    try:
+        seed_materials()
+    except Exception as e:
+        logger.critical(f"Le script a échoué: {e}")
+        exit(1)
