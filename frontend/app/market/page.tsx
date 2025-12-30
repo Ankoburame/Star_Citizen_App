@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { TrendingUp, TrendingDown, Minus, Activity, MapPin, DollarSign, Package, Clock } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { TrendingUp, TrendingDown, Minus, Activity, MapPin, DollarSign, Package, Clock, Filter, X, Search } from "lucide-react";
 
 const API_URL = "http://127.0.0.1:8000";
 
@@ -16,7 +16,7 @@ interface Material {
   best_buy_location: Location | null;
   best_sell_location: Location | null;
   available_at: number;
-  variation: number; // Simulé pour l'instant
+  variation: number;
 }
 
 interface Location {
@@ -44,7 +44,6 @@ function generateMiniChartData(variation: number): number[] {
   
   let current = baseValue;
   for (let i = 0; i < points; i++) {
-    // Tendance vers la variation finale
     const noise = (Math.random() - 0.5) * 5;
     const trend = (variation / points) * i;
     current = baseValue + trend + noise;
@@ -55,14 +54,13 @@ function generateMiniChartData(variation: number): number[] {
 }
 
 // Composant pour mini-graphique stylisé Star Citizen
-function MiniChart({ data, variation }: { data: number[]; variation: number }) {
-  const width = 80;
-  const height = 30;
+function MiniChart({ data, variation, size = "normal" }: { data: number[]; variation: number; size?: "normal" | "small" }) {
+  const width = size === "small" ? 50 : 80;
+  const height = size === "small" ? 20 : 30;
   const max = Math.max(...data);
   const min = Math.min(...data);
   const range = max - min || 1;
   
-  // Générer le path SVG
   const points = data.map((value, i) => {
     const x = (i / (data.length - 1)) * width;
     const y = height - ((value - min) / range) * height;
@@ -73,39 +71,35 @@ function MiniChart({ data, variation }: { data: number[]; variation: number }) {
   const glowColor = variation > 1 ? "rgba(16, 185, 129, 0.5)" : variation < -1 ? "rgba(239, 68, 68, 0.5)" : "rgba(113, 113, 122, 0.3)";
   
   return (
-    <svg width={width} height={height} style={{ display: 'block' }}>
-      {/* Glow effect */}
+    <svg width={width} height={height} style={{ display: 'block', margin: '0 auto' }}>
       <defs>
-        <filter id={`glow-${variation}`}>
-          <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+        <filter id={`glow-${variation}-${size}`}>
+          <feGaussianBlur stdDeviation="1.5" result="coloredBlur"/>
           <feMerge>
             <feMergeNode in="coloredBlur"/>
             <feMergeNode in="SourceGraphic"/>
           </feMerge>
         </filter>
         
-        {/* Gradient fill */}
-        <linearGradient id={`gradient-${variation}`} x1="0%" y1="0%" x2="0%" y2="100%">
+        <linearGradient id={`gradient-${variation}-${size}`} x1="0%" y1="0%" x2="0%" y2="100%">
           <stop offset="0%" style={{ stopColor: color, stopOpacity: 0.3 }} />
           <stop offset="100%" style={{ stopColor: color, stopOpacity: 0 }} />
         </linearGradient>
       </defs>
       
-      {/* Area fill */}
       <path
         d={`M 0,${height} L ${points} L ${width},${height} Z`}
-        fill={`url(#gradient-${variation})`}
+        fill={`url(#gradient-${variation}-${size})`}
         opacity={0.4}
       />
       
-      {/* Line */}
       <polyline
         points={points}
         fill="none"
         stroke={color}
-        strokeWidth="2"
-        filter={`url(#glow-${variation})`}
-        style={{ filter: `drop-shadow(0 0 4px ${glowColor})` }}
+        strokeWidth={size === "small" ? "1.5" : "2"}
+        filter={`url(#glow-${variation}-${size})`}
+        style={{ filter: `drop-shadow(0 0 3px ${glowColor})` }}
       />
     </svg>
   );
@@ -124,18 +118,18 @@ function MaterialCell({ material, isSelected, onClick }: {
   let bgColor = "rgba(0, 0, 0, 0.4)";
   let borderColor = "rgba(82, 82, 91, 0.3)";
   let textColor = "#a1a1aa";
-  let icon = <Minus style={{ width: '14px', height: '14px' }} />;
+  let icon = <Minus style={{ width: '10px', height: '10px' }} />;
   
   if (variation > 1) {
     bgColor = "rgba(16, 185, 129, 0.05)";
     borderColor = "rgba(16, 185, 129, 0.3)";
     textColor = "#10b981";
-    icon = <TrendingUp style={{ width: '14px', height: '14px' }} />;
+    icon = <TrendingUp style={{ width: '10px', height: '10px' }} />;
   } else if (variation < -1) {
     bgColor = "rgba(239, 68, 68, 0.05)";
     borderColor = "rgba(239, 68, 68, 0.3)";
     textColor = "#ef4444";
-    icon = <TrendingDown style={{ width: '14px', height: '14px' }} />;
+    icon = <TrendingDown style={{ width: '10px', height: '10px' }} />;
   }
   
   if (isSelected) {
@@ -151,29 +145,32 @@ function MaterialCell({ material, isSelected, onClick }: {
         position: 'relative',
         background: bgColor,
         border: `1px solid ${borderColor}`,
-        borderRadius: '6px',
-        padding: '12px',
+        borderRadius: '4px',
+        padding: '6px',
         cursor: 'pointer',
         transition: 'all 0.2s ease',
-        boxShadow: isSelected ? '0 0 20px rgba(6, 182, 212, 0.3)' : 'none'
+        boxShadow: isSelected ? '0 0 20px rgba(6, 182, 212, 0.3)' : 'none',
+        minHeight: '85px',
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'space-between'
       }}
       onClick={onClick}
       onMouseEnter={() => setShowTooltip(true)}
       onMouseLeave={() => setShowTooltip(false)}
     >
-      {/* Header */}
       <div style={{
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
-        marginBottom: '8px'
+        marginBottom: '4px'
       }}>
         <div style={{
-          fontSize: '16px',
+          fontSize: '11px',
           fontWeight: 700,
           color: 'white',
           fontFamily: 'monospace',
-          letterSpacing: '1px'
+          letterSpacing: '0.5px'
         }}>
           {acronym}
         </div>
@@ -182,23 +179,20 @@ function MaterialCell({ material, isSelected, onClick }: {
         </div>
       </div>
       
-      {/* Mini chart */}
-      <div style={{ marginBottom: '8px' }}>
-        <MiniChart data={chartData} variation={variation} />
+      <div style={{ marginBottom: '4px', height: '20px' }}>
+        <MiniChart data={chartData} variation={variation} size="small" />
       </div>
       
-      {/* Variation */}
       <div style={{
-        fontSize: '13px',
+        fontSize: '10px',
         fontWeight: 600,
         color: textColor,
         fontFamily: 'monospace',
         textAlign: 'right'
       }}>
-        {variation > 0 ? '+' : ''}{variation.toFixed(2)}%
+        {variation > 0 ? '+' : ''}{variation.toFixed(1)}%
       </div>
       
-      {/* Tooltip */}
       {showTooltip && (
         <div style={{
           position: 'absolute',
@@ -254,9 +248,14 @@ function MaterialCell({ material, isSelected, onClick }: {
 
 export default function MarketPage() {
   const [materials, setMaterials] = useState<Material[]>([]);
+  const [filteredMaterials, setFilteredMaterials] = useState<Material[]>([]);
   const [selectedMaterial, setSelectedMaterial] = useState<Material | null>(null);
   const [loading, setLoading] = useState(true);
   const [mounted, setMounted] = useState(false);
+  
+  // Filtres
+  const [selectedCategory, setSelectedCategory] = useState<string>("all");
+  const [searchQuery, setSearchQuery] = useState<string>("");
 
   useEffect(() => {
     setMounted(true);
@@ -270,15 +269,14 @@ export default function MarketPage() {
         const res = await fetch(`${API_URL}/market/materials`);
         const data = await res.json();
         
-        // Ajouter des variations simulées
         const materialsWithVariation = data.map((m: any) => ({
           ...m,
-          variation: (Math.random() - 0.5) * 10 // -5% à +5%
+          variation: (Math.random() - 0.5) * 10
         }));
         
         setMaterials(materialsWithVariation);
+        setFilteredMaterials(materialsWithVariation);
         
-        // Sélectionner un matériau aléatoire si aucun n'est sélectionné
         if (!selectedMaterial && materialsWithVariation.length > 0) {
           const randomIndex = Math.floor(Math.random() * materialsWithVariation.length);
           setSelectedMaterial(materialsWithVariation[randomIndex]);
@@ -292,9 +290,30 @@ export default function MarketPage() {
     }
 
     loadMaterials();
-    const timer = setInterval(loadMaterials, 30000); // Refresh toutes les 30s
+    const timer = setInterval(loadMaterials, 30000);
     return () => clearInterval(timer);
   }, [mounted, selectedMaterial]);
+
+  // Appliquer les filtres
+  useEffect(() => {
+    let filtered = materials;
+    
+    // Filtre par catégorie
+    if (selectedCategory !== "all") {
+      filtered = filtered.filter(m => m.category === selectedCategory);
+    }
+    
+    // Filtre par recherche
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(m => 
+        m.name.toLowerCase().includes(query) ||
+        generateAcronym(m.name).toLowerCase().includes(query)
+      );
+    }
+    
+    setFilteredMaterials(filtered);
+  }, [selectedCategory, searchQuery, materials]);
 
   if (!mounted || loading) {
     return (
@@ -328,6 +347,7 @@ export default function MarketPage() {
   }
 
   const largeChartData = selectedMaterial ? generateMiniChartData(selectedMaterial.variation) : [];
+  const categories = ["all", ...Array.from(new Set(materials.map(m => m.category)))];
 
   return (
     <div style={{ padding: '32px', maxWidth: '1800px' }}>
@@ -387,7 +407,7 @@ export default function MarketPage() {
               fontFamily: 'monospace'
             }}>
               <Package style={{ width: '14px', height: '14px' }} />
-              {materials.length} COMMODITÉS
+              {filteredMaterials.length} / {materials.length} COMMODITÉS
             </div>
             <div style={{
               display: 'flex',
@@ -414,14 +434,144 @@ export default function MarketPage() {
         }} />
       </div>
 
+      {/* FILTRES ET RECHERCHE */}
+      <div style={{
+        display: 'flex',
+        gap: '16px',
+        marginBottom: '24px',
+        flexWrap: 'wrap'
+      }}>
+        {/* Recherche */}
+        <div style={{
+          position: 'relative',
+          flex: '1 1 300px',
+          minWidth: '250px'
+        }}>
+          <Search style={{
+            position: 'absolute',
+            left: '12px',
+            top: '50%',
+            transform: 'translateY(-50%)',
+            width: '18px',
+            height: '18px',
+            color: '#71717a',
+            pointerEvents: 'none'
+          }} />
+          <input
+            type="text"
+            placeholder="Rechercher un matériau..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            style={{
+              width: '100%',
+              padding: '12px 12px 12px 42px',
+              background: 'rgba(0, 0, 0, 0.4)',
+              border: '1px solid rgba(82, 82, 91, 0.3)',
+              borderRadius: '6px',
+              color: 'white',
+              fontSize: '14px',
+              fontFamily: 'monospace',
+              outline: 'none',
+              transition: 'all 0.2s ease'
+            }}
+            onFocus={(e) => {
+              e.target.style.borderColor = 'rgba(6, 182, 212, 0.5)';
+              e.target.style.background = 'rgba(6, 182, 212, 0.05)';
+            }}
+            onBlur={(e) => {
+              e.target.style.borderColor = 'rgba(82, 82, 91, 0.3)';
+              e.target.style.background = 'rgba(0, 0, 0, 0.4)';
+            }}
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery("")}
+              style={{
+                position: 'absolute',
+                right: '12px',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                background: 'transparent',
+                border: 'none',
+                color: '#71717a',
+                cursor: 'pointer',
+                padding: '4px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}
+            >
+              <X style={{ width: '16px', height: '16px' }} />
+            </button>
+          )}
+        </div>
+
+        {/* Filtres catégories */}
+        <div style={{
+          display: 'flex',
+          gap: '8px',
+          flexWrap: 'wrap'
+        }}>
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            color: '#71717a',
+            fontSize: '12px',
+            letterSpacing: '1px',
+            textTransform: 'uppercase',
+            fontWeight: 600
+          }}>
+            <Filter style={{ width: '16px', height: '16px' }} />
+            CATÉGORIE:
+          </div>
+          {categories.map(cat => (
+            <button
+              key={cat}
+              onClick={() => setSelectedCategory(cat)}
+              style={{
+                padding: '8px 16px',
+                background: selectedCategory === cat 
+                  ? 'rgba(6, 182, 212, 0.2)' 
+                  : 'rgba(0, 0, 0, 0.4)',
+                border: `1px solid ${selectedCategory === cat ? '#06b6d4' : 'rgba(82, 82, 91, 0.3)'}`,
+                borderRadius: '6px',
+                color: selectedCategory === cat ? '#06b6d4' : '#a1a1aa',
+                fontSize: '12px',
+                fontWeight: 600,
+                textTransform: 'uppercase',
+                letterSpacing: '1px',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+                fontFamily: 'monospace'
+              }}
+              onMouseEnter={(e) => {
+                if (selectedCategory !== cat) {
+                  e.currentTarget.style.background = 'rgba(6, 182, 212, 0.05)';
+                  e.currentTarget.style.borderColor = 'rgba(6, 182, 212, 0.3)';
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (selectedCategory !== cat) {
+                  e.currentTarget.style.background = 'rgba(0, 0, 0, 0.4)';
+                  e.currentTarget.style.borderColor = 'rgba(82, 82, 91, 0.3)';
+                }
+              }}
+            >
+              {cat === "all" ? "Tous" : cat}
+            </button>
+          ))}
+        </div>
+      </div>
+
       {/* GRID DE MATÉRIAUX */}
       <div style={{
         display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fill, minmax(50px, 1fr))',
-        gap: '12px',
+        gridTemplateColumns: 'repeat(auto-fill, minmax(90px, 1fr))',
+        gap: '8px',
         marginBottom: '48px'
       }}>
-        {materials.map((material) => (
+        {filteredMaterials.map((material) => (
           <MaterialCell
             key={material.id}
             material={material}
@@ -430,6 +580,18 @@ export default function MarketPage() {
           />
         ))}
       </div>
+
+      {filteredMaterials.length === 0 && (
+        <div style={{
+          textAlign: 'center',
+          padding: '60px 20px',
+          color: '#71717a',
+          fontSize: '14px',
+          letterSpacing: '2px'
+        }}>
+          AUCUN MATÉRIAU TROUVÉ
+        </div>
+      )}
 
       {/* ZONE D'ANALYSE */}
       {selectedMaterial && (
@@ -441,7 +603,6 @@ export default function MarketPage() {
           position: 'relative',
           overflow: 'hidden'
         }}>
-          {/* Glow corner */}
           <div style={{
             position: 'absolute',
             top: '-100px',
@@ -452,7 +613,6 @@ export default function MarketPage() {
             pointerEvents: 'none'
           }} />
 
-          {/* Header avec nom du matériau */}
           <div style={{
             display: 'flex',
             alignItems: 'center',
@@ -552,7 +712,6 @@ export default function MarketPage() {
                 </linearGradient>
               </defs>
               
-              {/* Grid lines */}
               {[0, 1, 2, 3, 4].map(i => (
                 <line
                   key={i}
@@ -570,7 +729,7 @@ export default function MarketPage() {
                 const max = Math.max(...largeChartData);
                 const min = Math.min(...largeChartData);
                 const range = max - min || 1;
-                const width = 1600; // Approximation
+                const width = 1600;
                 
                 const points = largeChartData.map((value, i) => {
                   const x = (i / (largeChartData.length - 1)) * width;
@@ -582,13 +741,11 @@ export default function MarketPage() {
                 
                 return (
                   <>
-                    {/* Area fill */}
                     <path
                       d={`M 0,180 L ${points} L ${width},180 Z`}
                       fill="url(#mainGradient)"
                     />
                     
-                    {/* Line */}
                     <polyline
                       points={points}
                       fill="none"

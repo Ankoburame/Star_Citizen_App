@@ -17,3 +17,4 @@ class Material(Base):
     
     # ✅ AJOUTEZ CETTE LIGNE
     market_prices = relationship("MarketPrice", back_populates="material")
+    price_history = relationship("PriceHistory", back_populates="material")  # ou "location"

@@ -62,6 +62,7 @@ class Location(Base):
     
     # Relationships
     market_prices = relationship("MarketPrice", back_populates="location_obj", cascade="all, delete-orphan")
+    price_history = relationship("PriceHistory", back_populates="location")  # ✅ NOUVEAU
     
     def __repr__(self):
         return f"<Location(name='{self.name}', system='{self.system}', type='{self.location_type}')>"

@@ -9,6 +9,8 @@ from database import Base
 # Import models in dependency order
 from models.material import Material
 from models.market_price import MarketPrice
+from models.location import Location
+from models.price_history import PriceHistory
 
 # Export all models for easy import
 __all__ = [
@@ -16,4 +18,5 @@ __all__ = [
     "Material",
     "MarketPrice",
     "Location",
+
 ]

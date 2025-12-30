@@ -19,6 +19,7 @@ from api.trade import router as trade_router
 from api.ws_dashboard import router as ws_dashboard_router
 from database import SessionLocal
 from services.pricing_service import ensure_quantanium_price
+from api.price_history import router as history_router
 
 
 @asynccontextmanager
@@ -87,6 +88,7 @@ app.include_router(trade_router, prefix="/trade", tags=["Trade"])
 app.include_router(dashboard_router, prefix="/dashboard", tags=["Dashboard"])
 app.include_router(pricing_router, tags=["Pricing"])  # Already has /pricing prefix
 app.include_router(market_router, prefix="/market", tags=["Market"])  # ✅ NOUVEAU
+app.include_router(history_router, prefix="/history", tags=["Price History"])
 
 
 # ============================================================================
