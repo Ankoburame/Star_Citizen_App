@@ -8,7 +8,7 @@ from typing import List, Tuple
 from sqlalchemy.exc import SQLAlchemyError
 
 from database import SessionLocal
-from models.material import Material
+from models import Material
 
 # Configuration du logging
 logging.basicConfig(

@@ -9,7 +9,7 @@ class MarketPrice(Base):
 
     id = Column(Integer, primary_key=True)
     material_id = Column(Integer, ForeignKey("materials.id"), nullable=False)
-    location = Column(String, nullable=False)
+    location_id = Column(Integer, ForeignKey("locations.id"), nullable=False)
 
     sell_price = Column(Float, nullable=True)
     buy_price = Column(Float, nullable=True)
@@ -20,3 +20,4 @@ class MarketPrice(Base):
     
     # ✅ AJOUTEZ CETTE LIGNE
     material = relationship("Material", back_populates="market_prices")
+    location_obj = relationship("Location", back_populates="market_prices")

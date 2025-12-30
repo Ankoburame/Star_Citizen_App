@@ -1,7 +1,7 @@
 "use client";
 
 import { Menu, Wifi, Settings, User, Bell, Search } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 type TopbarProps = {
   sidebarOpen: boolean;
@@ -9,15 +9,22 @@ type TopbarProps = {
 };
 
 export function Topbar({ sidebarOpen, toggleSidebar }: TopbarProps) {
-  const [currentTime, setCurrentTime] = useState(new Date());
+  // ✅ Initialiser à null pour éviter les problèmes de SSR
+  const [currentTime, setCurrentTime] = useState<Date | null>(null);
 
-  // Update time every second
-  useState(() => {
+  // ✅ Utiliser useEffect au lieu de useState pour le timer
+  useEffect(() => {
+    // Initialiser l'heure côté client uniquement
+    setCurrentTime(new Date());
+    
+    // Démarrer le timer
     const timer = setInterval(() => {
       setCurrentTime(new Date());
     }, 1000);
+    
+    // Cleanup
     return () => clearInterval(timer);
-  });
+  }, []);
 
   return (
     <header
@@ -182,39 +189,41 @@ export function Topbar({ sidebarOpen, toggleSidebar }: TopbarProps) {
           }}
         />
 
-        {/* Time Display */}
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "flex-end",
-          }}
-        >
+        {/* Time Display - ✅ Afficher seulement si currentTime existe */}
+        {currentTime && (
           <div
             style={{
-              fontSize: "14px",
-              fontWeight: 600,
-              color: "#06b6d4",
-              fontFamily: "monospace",
-              letterSpacing: "1px",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "flex-end",
             }}
           >
-            {currentTime.toLocaleTimeString("fr-FR", {
-              hour: "2-digit",
-              minute: "2-digit",
-              second: "2-digit",
-            })}
+            <div
+              style={{
+                fontSize: "14px",
+                fontWeight: 600,
+                color: "#06b6d4",
+                fontFamily: "monospace",
+                letterSpacing: "1px",
+              }}
+            >
+              {currentTime.toLocaleTimeString("fr-FR", {
+                hour: "2-digit",
+                minute: "2-digit",
+                second: "2-digit",
+              })}
+            </div>
+            <div
+              style={{
+                fontSize: "10px",
+                color: "#52525b",
+                fontFamily: "monospace",
+              }}
+            >
+              {currentTime.toLocaleDateString("fr-FR")}
+            </div>
           </div>
-          <div
-            style={{
-              fontSize: "10px",
-              color: "#52525b",
-              fontFamily: "monospace",
-            }}
-          >
-            {currentTime.toLocaleDateString("fr-FR")}
-          </div>
-        </div>
+        )}
 
         {/* API Status Indicator */}
         <div

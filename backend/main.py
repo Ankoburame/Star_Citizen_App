@@ -11,6 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from api.dashboard import router as dashboard_router
 from api.materials import router as materials_router
+from api.market import router as market_router  # ✅ NOUVEAU
 from api.pricing import router as pricing_router
 from api.production import router as production_router
 from api.refining import router as refining_router
@@ -85,6 +86,7 @@ app.include_router(refining_router, prefix="/refining", tags=["Refining"])
 app.include_router(trade_router, prefix="/trade", tags=["Trade"])
 app.include_router(dashboard_router, prefix="/dashboard", tags=["Dashboard"])
 app.include_router(pricing_router, tags=["Pricing"])  # Already has /pricing prefix
+app.include_router(market_router, prefix="/market", tags=["Market"])  # ✅ NOUVEAU
 
 
 # ============================================================================
