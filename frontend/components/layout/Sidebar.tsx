@@ -1,83 +1,303 @@
-"use client"
+"use client";
 
-import Link from "next/link"
-import { usePathname } from "next/navigation"
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
   Factory,
   ShoppingCart,
   TrendingUp,
-} from "lucide-react"
+  Zap,
+  Circle,
+} from "lucide-react";
 
 type SidebarProps = {
-  open: boolean
-}
+  open: boolean;
+};
 
 const navItems = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
   { href: "/production", label: "Production", icon: Factory },
   { href: "/commerce", label: "Commerce", icon: ShoppingCart },
   { href: "/market", label: "Market", icon: TrendingUp },
-]
+];
 
 export function Sidebar({ open }: SidebarProps) {
-  const pathname = usePathname()
+  const pathname = usePathname();
 
   return (
     <aside
-      className={`
-        ${open ? "w-64" : "w-16"}
-        transition-all duration-200
-        bg-[#0e1220]
-        border-r border-[#20263a]
-        flex flex-col
-      `}
+      style={{
+        width: open ? "280px" : "80px",
+        transition: "width 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+        background: "linear-gradient(180deg, #0a0e1a 0%, #050810 100%)",
+        borderRight: "1px solid rgba(6, 182, 212, 0.1)",
+        display: "flex",
+        flexDirection: "column",
+        position: "relative",
+        overflow: "hidden",
+      }}
     >
-      {/* Header */}
-      <div className="h-14 flex items-center px-4 border-b border-[#20263a]">
-        {open && (
-          <span className="text-sm font-semibold tracking-wide text-[#e5e7eb]">
-            STAR CITIZEN
-          </span>
+      {/* Ligne lumineuse à droite */}
+      <div
+        style={{
+          position: "absolute",
+          right: 0,
+          top: 0,
+          bottom: 0,
+          width: "1px",
+          background: "linear-gradient(180deg, transparent 0%, #06b6d4 50%, transparent 100%)",
+          opacity: 0.3,
+        }}
+      />
+
+      {/* HEADER */}
+      <div
+        style={{
+          height: "72px",
+          display: "flex",
+          alignItems: "center",
+          padding: open ? "0 24px" : "0 20px",
+          borderBottom: "1px solid rgba(6, 182, 212, 0.1)",
+          position: "relative",
+        }}
+      >
+        {open ? (
+          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+            <div
+              style={{
+                width: "40px",
+                height: "40px",
+                background: "linear-gradient(135deg, #06b6d4 0%, #0891b2 100%)",
+                borderRadius: "8px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                boxShadow: "0 0 20px rgba(6, 182, 212, 0.4)",
+              }}
+            >
+              <Zap style={{ width: "24px", height: "24px", color: "white" }} />
+            </div>
+            <div>
+              <div
+                style={{
+                  fontSize: "16px",
+                  fontWeight: 700,
+                  color: "white",
+                  letterSpacing: "2px",
+                }}
+              >
+                STAR CITIZEN
+              </div>
+              <div
+                style={{
+                  fontSize: "10px",
+                  color: "#52525b",
+                  letterSpacing: "1px",
+                }}
+              >
+                RESOURCE MANAGER
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div
+            style={{
+              width: "40px",
+              height: "40px",
+              background: "linear-gradient(135deg, #06b6d4 0%, #0891b2 100%)",
+              borderRadius: "8px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              boxShadow: "0 0 20px rgba(6, 182, 212, 0.4)",
+              margin: "0 auto",
+            }}
+          >
+            <Zap style={{ width: "24px", height: "24px", color: "white" }} />
+          </div>
         )}
       </div>
 
-      {/* Navigation */}
-      <nav className="flex-1 py-3 space-y-1">
+      {/* NAVIGATION */}
+      <nav
+        style={{
+          flex: 1,
+          padding: "24px 12px",
+          display: "flex",
+          flexDirection: "column",
+          gap: "8px",
+        }}
+      >
         {navItems.map(({ href, label, icon: Icon }) => {
-          const active = pathname === href
+          const active = pathname === href;
 
           return (
             <Link
               key={href}
               href={href}
-              className={`
-                flex items-center gap-3 px-4 py-2 text-sm
-                ${
-                  active
-                    ? "bg-[#1f2a44] text-white"
-                    : "text-[#b0b6c3] hover:bg-[#161b2e] hover:text-white"
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "16px",
+                padding: open ? "16px 20px" : "16px 0",
+                justifyContent: open ? "flex-start" : "center",
+                borderRadius: "8px",
+                background: active
+                  ? "linear-gradient(90deg, rgba(6, 182, 212, 0.15) 0%, rgba(6, 182, 212, 0.05) 100%)"
+                  : "transparent",
+                border: active
+                  ? "1px solid rgba(6, 182, 212, 0.3)"
+                  : "1px solid transparent",
+                color: active ? "#06b6d4" : "#71717a",
+                transition: "all 0.2s ease",
+                position: "relative",
+                textDecoration: "none",
+                cursor: "pointer",
+              }}
+              onMouseEnter={(e) => {
+                if (!active) {
+                  e.currentTarget.style.background =
+                    "rgba(6, 182, 212, 0.05)";
+                  e.currentTarget.style.color = "#a1a1aa";
+                  e.currentTarget.style.borderColor = "rgba(6, 182, 212, 0.1)";
                 }
-              `}
+              }}
+              onMouseLeave={(e) => {
+                if (!active) {
+                  e.currentTarget.style.background = "transparent";
+                  e.currentTarget.style.color = "#71717a";
+                  e.currentTarget.style.borderColor = "transparent";
+                }
+              }}
             >
-              <Icon size={18} />
-              {open && <span>{label}</span>}
+              {active && (
+                <div
+                  style={{
+                    position: "absolute",
+                    left: 0,
+                    top: "50%",
+                    transform: "translateY(-50%)",
+                    width: "3px",
+                    height: "60%",
+                    background: "#06b6d4",
+                    borderRadius: "0 2px 2px 0",
+                    boxShadow: "0 0 10px #06b6d4",
+                  }}
+                />
+              )}
+
+              <Icon
+                style={{
+                  width: "20px",
+                  height: "20px",
+                  flexShrink: 0,
+                }}
+              />
+
+              {open && (
+                <span
+                  style={{
+                    fontSize: "14px",
+                    fontWeight: active ? 600 : 500,
+                    letterSpacing: "0.5px",
+                    textTransform: "uppercase",
+                  }}
+                >
+                  {label}
+                </span>
+              )}
+
+              {active && open && (
+                <div
+                  style={{
+                    marginLeft: "auto",
+                    width: "6px",
+                    height: "6px",
+                    borderRadius: "50%",
+                    background: "#06b6d4",
+                    boxShadow: "0 0 8px #06b6d4",
+                  }}
+                />
+              )}
             </Link>
-          )
+          );
         })}
       </nav>
 
-      {/* Footer */}
-      <div className="border-t border-[#20263a] p-3 text-xs text-[#8b92a3]">
+      {/* FOOTER - STATUS */}
+      <div
+        style={{
+          padding: open ? "20px 24px" : "20px 12px",
+          borderTop: "1px solid rgba(6, 182, 212, 0.1)",
+        }}
+      >
         {open ? (
-          <>
-            <div>API: online</div>
-            <div>v0.1.0</div>
-          </>
+          <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+            {/* API Status */}
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+              }}
+            >
+              <Circle
+                style={{
+                  width: "8px",
+                  height: "8px",
+                  fill: "#10b981",
+                  color: "#10b981",
+                }}
+              />
+              <span
+                style={{
+                  fontSize: "11px",
+                  color: "#71717a",
+                  letterSpacing: "1px",
+                  textTransform: "uppercase",
+                }}
+              >
+                API Connected
+              </span>
+            </div>
+
+            {/* Version */}
+            <div
+              style={{
+                fontSize: "10px",
+                color: "#3f3f46",
+                fontFamily: "monospace",
+                letterSpacing: "0.5px",
+              }}
+            >
+              v0.1.0-alpha
+            </div>
+
+            {/* Scan line effect */}
+            <div
+              style={{
+                height: "1px",
+                background:
+                  "linear-gradient(90deg, transparent 0%, #06b6d4 50%, transparent 100%)",
+                opacity: 0.3,
+              }}
+            />
+          </div>
         ) : (
-          <div className="text-center">●</div>
+          <div style={{ textAlign: "center" }}>
+            <Circle
+              style={{
+                width: "8px",
+                height: "8px",
+                fill: "#10b981",
+                color: "#10b981",
+                margin: "0 auto",
+              }}
+            />
+          </div>
         )}
       </div>
     </aside>
-  )
+  );
 }

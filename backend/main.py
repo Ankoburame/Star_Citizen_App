@@ -1,39 +1,67 @@
+"""
+Main FastAPI application for Star Citizen App.
+Configures routes, middleware, and application lifecycle.
+"""
+
+from contextlib import asynccontextmanager
+from typing import AsyncGenerator
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from contextlib import asynccontextmanager
 
-from database import SessionLocal
-from services.pricing_service import ensure_quantanium_price
-
+from api.dashboard import router as dashboard_router
 from api.materials import router as materials_router
+from api.pricing import router as pricing_router
 from api.production import router as production_router
 from api.refining import router as refining_router
 from api.trade import router as trade_router
-from api.dashboard import router as dashboard_router
-from api.pricing import router as pricing_router
 from api.ws_dashboard import router as ws_dashboard_router
+from database import SessionLocal
+from services.pricing_service import ensure_quantanium_price
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
-    # 🔥 Warmup pricing (1 fois au démarrage)
+async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
+    """
+    Application lifespan manager.
+    
+    Handles startup and shutdown events for the application.
+    Initializes Quantanium pricing data on startup.
+    
+    Args:
+        app: FastAPI application instance
+        
+    Yields:
+        None during application runtime
+    """
+    # Startup: Initialize pricing data
     db = SessionLocal()
     try:
         ensure_quantanium_price(db)
+        print("✅ Quantanium price initialized")
     except Exception as e:
-        print("⚠️ Quantanium init skipped:", e)
-
+        print(f"⚠️  Quantanium initialization failed: {e}")
     finally:
         db.close()
-
+    
     yield
+    
+    # Shutdown: cleanup would go here if needed
 
 
-app = FastAPI(lifespan=lifespan)
+# Create FastAPI application
+app = FastAPI(
+    title="Star Citizen App API",
+    description="Backend API for Star Citizen resource management",
+    version="1.0.0",
+    lifespan=lifespan
+)
 
-# =========================
-# CORS
-# =========================
+
+# ============================================================================
+# MIDDLEWARE CONFIGURATION
+# ============================================================================
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -46,17 +74,36 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# =========================
-# ROUTES HTTP
-# =========================
+
+# ============================================================================
+# HTTP ROUTES
+# ============================================================================
+
 app.include_router(materials_router, prefix="/materials", tags=["Materials"])
 app.include_router(production_router, prefix="/production", tags=["Production"])
 app.include_router(refining_router, prefix="/refining", tags=["Refining"])
 app.include_router(trade_router, prefix="/trade", tags=["Trade"])
 app.include_router(dashboard_router, prefix="/dashboard", tags=["Dashboard"])
-app.include_router(pricing_router, prefix="/pricing", tags=["Pricing"])
+app.include_router(pricing_router, tags=["Pricing"])  # Already has /pricing prefix
 
-# =========================
-# WEBSOCKET
-# =========================
-app.include_router(ws_dashboard_router)
+
+# ============================================================================
+# WEBSOCKET ROUTES
+# ============================================================================
+
+app.include_router(ws_dashboard_router, tags=["WebSocket"])
+
+
+# ============================================================================
+# HEALTH CHECK
+# ============================================================================
+
+@app.get("/", tags=["Health"])
+def health_check():
+    """
+    Health check endpoint.
+    
+    Returns:
+        Simple status message confirming API is running
+    """
+    return {"status": "ok", "message": "Star Citizen App API is running"}
