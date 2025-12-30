@@ -11,6 +11,7 @@ from models.material import Material
 from models.market_price import MarketPrice
 from models.location import Location
 from models.price_history import PriceHistory
+from models.refining_job import RefiningJob, RefiningJobMaterial 
 
 # Export all models for easy import
 __all__ = [

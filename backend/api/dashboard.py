@@ -10,11 +10,11 @@ from sqlalchemy import func, desc
 from sqlalchemy.orm import Session
 
 from database import get_db
-from models.refining import RefiningJob
 from models.stock_event import StockEvent
 from models.market_price import MarketPrice
 from models.stock import Stock
 from models.material import Material
+from models.refining_job import RefiningJob
 
 router = APIRouter()
 

@@ -14,7 +14,6 @@ from api.materials import router as materials_router
 from api.market import router as market_router  # ✅ NOUVEAU
 from api.pricing import router as pricing_router
 from api.production import router as production_router
-from api.refining import router as refining_router
 from api.trade import router as trade_router
 from api.ws_dashboard import router as ws_dashboard_router
 from database import SessionLocal
@@ -85,7 +84,6 @@ app.add_middleware(
 
 app.include_router(materials_router, prefix="/materials", tags=["Materials"])
 app.include_router(production_router, prefix="/production", tags=["Production"])
-app.include_router(refining_router, prefix="/refining", tags=["Refining"])
 app.include_router(trade_router, prefix="/trade", tags=["Trade"])
 app.include_router(dashboard_router, prefix="/dashboard", tags=["Dashboard"])
 app.include_router(pricing_router, tags=["Pricing"])  # Already has /pricing prefix

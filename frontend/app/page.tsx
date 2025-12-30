@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Package, Activity, DollarSign, Clock, TrendingUp, Zap } from "lucide-react";
 
+
 const API_URL = "http://127.0.0.1:8000";
 
 interface DashboardData {
@@ -45,20 +46,23 @@ export default function DashboardPage() {
     if (!mounted) return;
 
     async function loadData() {
-      try {
-        const res1 = await fetch(API_URL + "/dashboard/");
-        const res2 = await fetch(API_URL + "/refining/active");
-        
-        const data1 = await res1.json();
-        const data2 = await res2.json();
-        
-        setDashboard(data1);
-        setJobs(data2);
-      } catch (e) {
-        console.error("Error loading data:", e);
-      }
+        try {
+            // Charger seulement les jobs de raffinerie
+            const res = await fetch(API_URL + "/production/jobs?status=processing");
+            const jobs = await res.json();
+            
+            setRefiningJobs(jobs);
+            
+            // Dashboard data vide pour l'instant (on le fera plus tard)
+            setDashboardData({
+            total_profit: 0,
+            active_jobs: jobs.length,
+            materials_in_stock: 0
+            });
+        } catch (e) {
+            console.error("Error loading dashboard:", e);
+        }
     }
-    
     loadData();
     const timer = setInterval(loadData, 5000);
     return () => clearInterval(timer);
