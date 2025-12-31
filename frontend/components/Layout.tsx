@@ -9,7 +9,7 @@ export default function RootLayout({
   return (
     <html lang="fr">
       <body className="flex h-screen bg-zinc-950 text-zinc-100">
-        <Sidebar />
+        <Sidebar open={true} />
         <main className="flex-1 p-6 overflow-auto">
           {children}
         </main>
