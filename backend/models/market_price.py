@@ -26,3 +26,8 @@ class MarketPrice(Base):
     def location(self):
         """Alias pour location_obj (compatibilité)."""
         return self.location_obj
+    
+    @location.setter
+    def location(self, value):
+        """Setter pour location (compatibilité)."""
+        self.location_obj = value
