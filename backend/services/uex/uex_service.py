@@ -177,10 +177,23 @@ def refresh_all_prices(db: Session, force: bool = False) -> Dict[str, int]:
                 # Trouver le matériau correspondant
                 material = map_uex_commodity_to_material(db, commodity)
                 
+                material = map_uex_commodity_to_material(db, commodity)
+
                 if not material:
-                    print(f"⚠️  No matching material for UEX commodity: {commodity.get('name')}")
-                    stats["skipped"] += 1
-                    continue
+                    # CRÉER le matériau s'il n'existe pas
+                    uex_name = commodity.get('name', '').strip()
+                    if uex_name:
+                        material = Material(
+                            name=uex_name,
+                            category=commodity.get('type', 'Commodity'),
+                            is_trade_good=True
+                        )
+                        db.add(material)
+                        db.flush()  # Pour avoir l'ID
+                        print(f"✨ Created new material: {material.name}")
+                    else:
+                        stats["skipped"] += 1
+                        continue
                 
                 # Récupérer le meilleur prix de vente
                 commodity_id = commodity.get("id")
