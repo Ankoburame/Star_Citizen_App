@@ -110,10 +110,7 @@ export default function DashboardPage() {
                 });
             }
         }
-    } catch (e) {
-        console.error("Error loading dashboard:", e);
-    }
-}
+
 loadData();
 const timer = setInterval(loadData, 5000);
 return () => clearInterval(timer);
@@ -668,7 +665,7 @@ return (
                 </div>
             ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    {dashboard.refining_history.map((job) => (
+                    {dashboard.refining_history.slice(0, 5).map((job) => (
                         <div
                             key={job.id}
                             style={{
