@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import { TrendingUp, TrendingDown, Minus, Activity, MapPin, DollarSign, Package, Clock, Filter, X, Search, ArrowUpDown } from "lucide-react";
 import { useRouter } from "next/navigation";
 
-const API_URL = "http://127.0.0.1:8000";
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
 
 type SortOption = "name-asc" | "name-desc" | "price-asc" | "price-desc" | "variation-asc" | "variation-desc" | "locations";
 

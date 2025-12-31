@@ -7,7 +7,7 @@ import { SaleForm } from "./SaleForm";
 import { InventoryFilters } from "./InventoryFilters";
 import { SalvageJobForm } from "./SalvageJobForm"; 
 
-const API_URL = "http://127.0.0.1:8000";
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
 
 // ============================================================
 // CIG COLOR PALETTE (Authentic Star Citizen)
