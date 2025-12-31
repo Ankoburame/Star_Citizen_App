@@ -11,6 +11,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copier le code backend
 COPY backend/ .
 
+ENV DATABASE_URL=${DATABASE_URL}
+
 # Exposer le port
 EXPOSE 8000
 
