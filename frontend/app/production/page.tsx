@@ -175,7 +175,7 @@ function ScanLine() {
 // COMPOSANT: Job Card (CIG Style)
 // ============================================================
 
-function JobCard({ job, onCollect }: { job: RefiningJob; onCollect: (id: number) => void }) {
+function JobCard({ job, onCollect, onDismiss }: { job: RefiningJob; onCollect: (id: number) => void; onDismiss: () => void }) {
   const [localSeconds, setLocalSeconds] = useState(job.seconds_remaining);
   const isReady = job.status === "ready" || localSeconds <= 0;
   const isCollected = job.status === "collected";
@@ -453,9 +453,7 @@ function JobCard({ job, onCollect }: { job: RefiningJob; onCollect: (id: number)
             </div>
 
             <button
-              onClick={async () => {
-                await refreshData();
-              }}
+              onClick={() => onDismiss()}
               style={{
                 padding: '8px',
                 background: COLORS.bgLight,
@@ -636,6 +634,32 @@ export default function ProductionPage() {
     return () => clearInterval(timer);
   }, [mounted]);
 
+  const refreshData = async () => {
+    try {
+      const [processingRes, readyRes, invRes, salesRes, statsRes] = await Promise.all([
+        fetch(`${API_URL}/production/jobs?status=processing`),
+        fetch(`${API_URL}/production/jobs?status=ready`),
+        fetch(`${API_URL}/production/inventory`),
+        fetch(`${API_URL}/production/sales?limit=10`),
+        fetch(`${API_URL}/production/sales/stats`)
+      ]);
+
+      const processingJobs = await processingRes.json();
+      const readyJobs = await readyRes.json();
+
+      console.log("🔄 Refresh - Processing:", processingJobs.length, "Ready:", readyJobs.length);
+
+      // Combiner les 2 listes
+      setJobs([...processingJobs, ...readyJobs]);
+
+      setInventory(await invRes.json());
+      setSales(await salesRes.json());
+      setStats(await statsRes.json());
+    } catch (e) {
+      console.error("Error refreshing data:", e);
+    }
+  };
+
   const handleCollect = async (jobId: number) => {
     try {
       console.log("🔵 START: Collecting job", jobId);
@@ -665,32 +689,7 @@ export default function ProductionPage() {
       alert("Erreur lors de la collecte : " + e);
     }
   };
-  const refreshData = async () => {
-    try {
-      const [processingRes, readyRes, invRes, salesRes, statsRes] = await Promise.all([
-        fetch(`${API_URL}/production/jobs?status=processing`),
-        fetch(`${API_URL}/production/jobs?status=ready`),
-        fetch(`${API_URL}/production/inventory`),
-        fetch(`${API_URL}/production/sales?limit=10`),
-        fetch(`${API_URL}/production/sales/stats`)
-      ]);
-
-      const processingJobs = await processingRes.json();
-      const readyJobs = await readyRes.json();
-
-      console.log("🔄 Refresh - Processing:", processingJobs.length, "Ready:", readyJobs.length);
-
-      // Combiner les 2 listes
-      setJobs([...processingJobs, ...readyJobs]);
-
-      setInventory(await invRes.json());
-      setSales(await salesRes.json());
-      setStats(await statsRes.json());
-    } catch (e) {
-      console.error("Error refreshing data:", e);
-    }
-  };
-
+  
   if (!mounted || loading) {
     return (
       <div style={{
@@ -956,7 +955,7 @@ export default function ProductionPage() {
                   gap: '20px'
                 }}>
                   {processingJobs.map(job => (
-                    <JobCard key={job.id} job={job} onCollect={handleCollect} />
+                    <JobCard key={job.id} job={job} onCollect={handleCollect} onDismiss={refreshData} />
                   ))}
                 </div>
               )}
@@ -1017,7 +1016,7 @@ export default function ProductionPage() {
                   gap: '20px'
                 }}>
                   {readyJobs.map(job => (
-                    <JobCard key={job.id} job={job} onCollect={handleCollect} />
+                    <JobCard key={job.id} job={job} onCollect={handleCollect} onDismiss={refreshData} />
                   ))}
                 </div>
               </div>
@@ -1054,7 +1053,7 @@ export default function ProductionPage() {
                 {/* FILTRES */}
                 <InventoryFilters
                   inventory={inventory}
-                  onFilteredChange={setFilteredInventory}
+                  onFilteredChange={(filtered: any) => setFilteredInventory(filtered as any)}
                 />
 
                 {/* GRILLE INVENTAIRE */}

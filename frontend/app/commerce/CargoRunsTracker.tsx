@@ -51,7 +51,7 @@ function formatCurrency(num: number): string {
   return formatNumber(num);
 }
 
-export function CargoRunsTracker() {
+export default function CargoRunsTracker() {
   const [runs, setRuns] = useState<CargoRun[]>([]);
   const [loading, setLoading] = useState(true);
   const [isFormOpen, setIsFormOpen] = useState(false);

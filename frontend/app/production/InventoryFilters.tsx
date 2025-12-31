@@ -26,9 +26,12 @@ interface InventoryItem {
     id: number;
     refinery_id: number;
     refinery_name: string;
+    refinery_system: string;  // ← AJOUTER
     material_id: number;
     material_name: string;
     quantity: number;
+    unit: string;  // ← AJOUTER
+    estimated_unit_price: number;  // ← AJOUTER
     estimated_total_value: number;
     last_updated: string;
 }
