@@ -1,6 +1,6 @@
 "use client";
 
-import { CargoRunsTracker } from "./CargoRunsTracker";
+import CargoRunsTracker from "./CargoRunsTracker";
 import React, { useState, useEffect } from "react";
 import { 
   TrendingUp, 
