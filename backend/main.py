@@ -21,6 +21,7 @@ from services.pricing_service import ensure_quantanium_price
 from api.price_history import router as history_router
 from api import market, price_history
 from api import market, price_history, production
+from api import production, market, commerce
 
 
 @asynccontextmanager
@@ -91,9 +92,8 @@ app.include_router(market_router, prefix="/market", tags=["Market"])  # ✅ NOUV
 app.include_router(history_router, prefix="/history", tags=["Price History"])
 app.include_router(market.router)
 app.include_router(price_history.router)
-app.include_router(market.router)
-app.include_router(price_history.router)
 app.include_router(production.router) 
+app.include_router(commerce.router)
 
 # ============================================================================
 # WEBSOCKET ROUTES

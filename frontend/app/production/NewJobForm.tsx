@@ -59,7 +59,6 @@ export function NewJobForm({ onJobCreated }: NewJobFormProps) {
   
   // Form state
   const [refineryId, setRefineryId] = useState<number>(0);
-  const [jobType, setJobType] = useState<"mining" | "salvage">("mining");
   const [materialLines, setMaterialLines] = useState<MaterialLine[]>([
     { id: Math.random().toString(), material_id: 0, quantity: 0 }
   ]);
@@ -80,9 +79,14 @@ export function NewJobForm({ onJobCreated }: NewJobFormProps) {
         
         const refData = await refRes.json();
         const matData = await matRes.json();
-        
-        setRefineries(refData);
-        setMaterials(matData);
+
+// FILTRE: Exclure les matériaux "Raw" (non raffinables)
+const refinableMaterials = matData.filter((mat: Material) => 
+  !mat.name.includes('(Raw)') && !mat.name.endsWith('Raw')
+);
+
+setRefineries(refData);
+setMaterials(refinableMaterials);  // ← Liste filtrée
         
         // Set default refinery
         if (refData.length > 0) {
@@ -142,7 +146,7 @@ export function NewJobForm({ onJobCreated }: NewJobFormProps) {
     try {
       const payload = {
         refinery_id: refineryId,
-        job_type: jobType,
+        job_type: "mining",
         total_cost: totalCost,
         processing_time: totalMinutes,
         notes: notes || null,
@@ -334,55 +338,6 @@ export function NewJobForm({ onJobCreated }: NewJobFormProps) {
                     </option>
                   ))}
                 </select>
-              </div>
-
-              {/* Job Type */}
-              <div>
-                <label style={{
-                  display: 'block',
-                  fontSize: '10px',
-                  color: COLORS.textSecondary,
-                  letterSpacing: '1px',
-                  textTransform: 'uppercase',
-                  marginBottom: '8px',
-                  fontFamily: 'monospace'
-                }}>
-                  JOB TYPE
-                </label>
-                <div style={{ display: 'flex', gap: '16px' }}>
-                  {(['mining', 'salvage'] as const).map(type => (
-                    <label key={type} style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '8px',
-                      cursor: 'pointer',
-                      padding: '10px 16px',
-                      background: jobType === type ? `${COLORS.orange}20` : COLORS.bgDark,
-                      border: `1px solid ${jobType === type ? COLORS.orange : COLORS.bgLight}`,
-                      borderRadius: '2px',
-                      transition: 'all 0.2s ease'
-                    }}>
-                      <input
-                        type="radio"
-                        name="jobType"
-                        value={type}
-                        checked={jobType === type}
-                        onChange={(e) => setJobType(e.target.value as "mining" | "salvage")}
-                        style={{ accentColor: COLORS.orange }}
-                      />
-                      <span style={{
-                        fontSize: '11px',
-                        color: jobType === type ? COLORS.orange : COLORS.textSecondary,
-                        fontFamily: 'monospace',
-                        letterSpacing: '1px',
-                        textTransform: 'uppercase',
-                        fontWeight: 600
-                      }}>
-                        {type}
-                      </span>
-                    </label>
-                  ))}
-                </div>
               </div>
 
               {/* Materials */}

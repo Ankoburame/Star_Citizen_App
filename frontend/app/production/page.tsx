@@ -1,8 +1,11 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Activity, Clock, Package, TrendingUp, AlertTriangle, CheckCircle, Loader, ArrowRight, Plus } from "lucide-react";
+import { Activity, Clock, Package, TrendingUp, AlertTriangle, CheckCircle, Loader, ArrowRight, Plus, Filter } from "lucide-react";
 import { NewJobForm } from "./NewJobForm";
+import { SaleForm } from "./SaleForm";
+import { InventoryFilters } from "./InventoryFilters";
+import { SalvageJobForm } from "./SalvageJobForm"; 
 
 const API_URL = "http://127.0.0.1:8000";
 
@@ -17,21 +20,21 @@ const COLORS = {
   redDark: "#991b1b",
   yellow: "#eab308",
   yellowLight: "#facc15",
-  
+
   // Status
   greenOlive: "#84a98c",
   greenOliveLight: "#a3b18a",
-  
+
   // Backgrounds
   bgDark: "#0f172a",
   bgMedium: "#1e293b",
   bgLight: "#334155",
-  
+
   // Text
   textPrimary: "#e2e8f0",
   textSecondary: "#94a3b8",
   textTertiary: "#64748b",
-  
+
   // Accents
   accent: "#f97316",
   accentDark: "#ea580c"
@@ -176,7 +179,7 @@ function JobCard({ job, onCollect }: { job: RefiningJob; onCollect: (id: number)
   const [localSeconds, setLocalSeconds] = useState(job.seconds_remaining);
   const isReady = job.status === "ready" || localSeconds <= 0;
   const isCollected = job.status === "collected";
-  
+
   useEffect(() => {
     if (job.status === "processing" && localSeconds > 0) {
       const timer = setInterval(() => {
@@ -185,12 +188,12 @@ function JobCard({ job, onCollect }: { job: RefiningJob; onCollect: (id: number)
       return () => clearInterval(timer);
     }
   }, [job.status, localSeconds]);
-  
+
   const progress = isReady ? 100 : job.progress_percentage;
   const barColor = isReady ? COLORS.greenOlive : COLORS.orange;
   const statusColor = isCollected ? COLORS.textTertiary : isReady ? COLORS.greenOlive : COLORS.orange;
   const statusBg = isCollected ? COLORS.bgMedium : isReady ? COLORS.greenOlive : COLORS.orange;
-  
+
   return (
     <div style={{
       background: `linear-gradient(135deg, ${COLORS.bgDark}f0 0%, ${COLORS.bgMedium}f0 100%)`,
@@ -222,7 +225,7 @@ function JobCard({ job, onCollect }: { job: RefiningJob; onCollect: (id: number)
         borderBottom: `1px solid ${statusColor}`,
         borderLeft: `1px solid ${statusColor}`
       }} />
-      
+
       {/* Header bar (rouge CIG) */}
       <div style={{
         position: 'absolute',
@@ -232,7 +235,7 @@ function JobCard({ job, onCollect }: { job: RefiningJob; onCollect: (id: number)
         height: '3px',
         background: `linear-gradient(90deg, ${COLORS.red}, ${COLORS.redDark})`
       }} />
-      
+
       {/* Header */}
       <div style={{
         display: 'flex',
@@ -264,7 +267,7 @@ function JobCard({ job, onCollect }: { job: RefiningJob; onCollect: (id: number)
             {job.refinery_name}
           </div>
         </div>
-        
+
         {!isCollected && (
           <div style={{
             padding: '5px 12px',
@@ -282,7 +285,7 @@ function JobCard({ job, onCollect }: { job: RefiningJob; onCollect: (id: number)
           </div>
         )}
       </div>
-      
+
       {/* Materials (style CIG) */}
       <div style={{
         marginBottom: '16px',
@@ -301,10 +304,10 @@ function JobCard({ job, onCollect }: { job: RefiningJob; onCollect: (id: number)
             alignItems: 'center'
           }}>
             <span style={{ color: COLORS.textSecondary, display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span style={{ 
-                display: 'inline-block', 
-                width: '6px', 
-                height: '6px', 
+              <span style={{
+                display: 'inline-block',
+                width: '6px',
+                height: '6px',
                 background: COLORS.orange,
                 clipPath: 'polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)'
               }} />
@@ -316,7 +319,7 @@ function JobCard({ job, onCollect }: { job: RefiningJob; onCollect: (id: number)
           </div>
         ))}
       </div>
-      
+
       {/* Progress bar (style CIG) */}
       {!isCollected && (
         <>
@@ -335,7 +338,7 @@ function JobCard({ job, onCollect }: { job: RefiningJob; onCollect: (id: number)
               {isReady ? "COMPLETE" : formatTime(localSeconds)}
             </span>
           </div>
-          
+
           <div style={{
             width: '100%',
             height: '20px',
@@ -364,7 +367,7 @@ function JobCard({ job, onCollect }: { job: RefiningJob; onCollect: (id: number)
                 animation: isReady ? 'none' : 'shimmer 2s infinite'
               }} />
             </div>
-            
+
             <div style={{
               position: 'absolute',
               top: '50%',
@@ -382,7 +385,7 @@ function JobCard({ job, onCollect }: { job: RefiningJob; onCollect: (id: number)
           </div>
         </>
       )}
-      
+
       {/* Actions (boutons jaune CIG) */}
       <div style={{
         display: 'flex',
@@ -398,7 +401,7 @@ function JobCard({ job, onCollect }: { job: RefiningJob; onCollect: (id: number)
         }}>
           TOTAL COST: <span style={{ color: COLORS.orange, fontWeight: 700 }}>{formatNumber(job.total_cost)} aUEC</span>
         </div>
-        
+
         {isReady && !isCollected && (
           <button
             onClick={() => onCollect(job.id)}
@@ -430,21 +433,51 @@ function JobCard({ job, onCollect }: { job: RefiningJob; onCollect: (id: number)
             COLLECT CARGO
           </button>
         )}
-        
+
         {isCollected && (
-          <div style={{
-            padding: '10px 20px',
-            background: `${COLORS.bgLight}40`,
-            border: `1px solid ${COLORS.textTertiary}`,
-            borderRadius: '2px',
-            color: COLORS.textTertiary,
-            fontSize: '11px',
-            fontWeight: 700,
-            textTransform: 'uppercase',
-            letterSpacing: '1px',
-            fontFamily: 'monospace'
-          }}>
-            ✓ COLLECTED
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', flex: 1 }}>
+            <div style={{
+              padding: '10px 20px',
+              background: `${COLORS.greenOlive}30`,
+              border: `1px solid ${COLORS.greenOlive}`,
+              borderRadius: '2px',
+              color: COLORS.greenOlive,
+              fontSize: '11px',
+              fontWeight: 700,
+              textTransform: 'uppercase',
+              letterSpacing: '1px',
+              fontFamily: 'monospace',
+              textAlign: 'center'
+            }}>
+              ✓ CARGO TRANSFERRED TO MANIFEST
+            </div>
+
+            <button
+              onClick={async () => {
+                await refreshData();
+              }}
+              style={{
+                padding: '8px',
+                background: COLORS.bgLight,
+                border: `1px solid ${COLORS.textTertiary}`,
+                borderRadius: '2px',
+                color: COLORS.textSecondary,
+                fontSize: '10px',
+                fontWeight: 600,
+                cursor: 'pointer',
+                fontFamily: 'monospace',
+                textTransform: 'uppercase',
+                transition: 'all 0.2s ease'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = COLORS.bgMedium;
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = COLORS.bgLight;
+              }}
+            >
+              DISMISS
+            </button>
           </div>
         )}
       </div>
@@ -467,14 +500,14 @@ function InventoryCard({ item }: { item: InventoryItem }) {
       overflow: 'hidden',
       transition: 'all 0.2s ease'
     }}
-    onMouseEnter={(e) => {
-      e.currentTarget.style.borderColor = `${COLORS.orange}80`;
-      e.currentTarget.style.boxShadow = `0 0 15px ${COLORS.orange}20`;
-    }}
-    onMouseLeave={(e) => {
-      e.currentTarget.style.borderColor = `${COLORS.orange}40`;
-      e.currentTarget.style.boxShadow = 'none';
-    }}>
+      onMouseEnter={(e) => {
+        e.currentTarget.style.borderColor = `${COLORS.orange}80`;
+        e.currentTarget.style.boxShadow = `0 0 15px ${COLORS.orange}20`;
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.borderColor = `${COLORS.orange}40`;
+        e.currentTarget.style.boxShadow = 'none';
+      }}>
       <div style={{
         fontSize: '10px',
         color: COLORS.textSecondary,
@@ -485,7 +518,7 @@ function InventoryCard({ item }: { item: InventoryItem }) {
       }}>
         {item.refinery_name} :: {item.refinery_system}
       </div>
-      
+
       <div style={{
         fontSize: '16px',
         fontWeight: 700,
@@ -495,7 +528,7 @@ function InventoryCard({ item }: { item: InventoryItem }) {
       }}>
         {item.material_name}
       </div>
-      
+
       <div style={{
         display: 'flex',
         justifyContent: 'space-between',
@@ -518,7 +551,7 @@ function InventoryCard({ item }: { item: InventoryItem }) {
           {item.unit}
         </span>
       </div>
-      
+
       <div style={{
         padding: '8px',
         background: `${COLORS.greenOlive}15`,
@@ -555,6 +588,7 @@ function InventoryCard({ item }: { item: InventoryItem }) {
 export default function ProductionPage() {
   const [jobs, setJobs] = useState<RefiningJob[]>([]);
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
+  const [filteredInventory, setFilteredInventory] = useState<InventoryItem[]>([]);
   const [sales, setSales] = useState<Sale[]>([]);
   const [stats, setStats] = useState<SalesStats | null>(null);
   const [loading, setLoading] = useState(true);
@@ -567,17 +601,26 @@ export default function ProductionPage() {
 
   useEffect(() => {
     if (!mounted) return;
-    
+
     async function loadData() {
       try {
-        const [jobsRes, invRes, salesRes, statsRes] = await Promise.all([
-        fetch(`${API_URL}/production/jobs?status=processing`),
-        fetch(`${API_URL}/production/inventory`),
-        fetch(`${API_URL}/production/sales?limit=10`),
-        fetch(`${API_URL}/production/sales/stats`)
-      ]);
-              
-        setJobs(await jobsRes.json());
+        const [processingRes, readyRes, invRes, salesRes, statsRes] = await Promise.all([
+          fetch(`${API_URL}/production/jobs?status=processing`),
+          fetch(`${API_URL}/production/jobs?status=ready`),
+          fetch(`${API_URL}/production/inventory`),
+          fetch(`${API_URL}/production/sales?limit=10`),
+          fetch(`${API_URL}/production/sales/stats`)
+        ]);
+
+        const processingJobs = await processingRes.json();
+        const readyJobs = await readyRes.json();
+
+        console.log("📊 Processing jobs:", processingJobs.length);
+        console.log("🟢 Ready jobs:", readyJobs.length);
+
+        // Combiner les 2 listes
+        setJobs([...processingJobs, ...readyJobs]);
+
         setInventory(await invRes.json());
         setSales(await salesRes.json());
         setStats(await statsRes.json());
@@ -594,44 +637,52 @@ export default function ProductionPage() {
   }, [mounted]);
 
   const handleCollect = async (jobId: number) => {
-  try {
-    console.log("🔵 START: Collecting job", jobId);
-    
-    const response = await fetch(`${API_URL}/production/jobs/${jobId}/collect`, { 
-      method: 'POST' 
-    });
-    
-    console.log("🔵 Response status:", response.status);
-    
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
-    }
-    
-    const result = await response.json();
-    console.log("✅ Collect SUCCESS:", result);
-    
-    // Attendre 500ms
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
-    console.log("🔄 Refreshing all data...");
-    await refreshData();
-    console.log("✅ Refresh COMPLETE!");
-    
-  } catch (e) {
-    console.error("❌ ERROR collecting job:", e);
-    alert("Erreur lors de la collecte : " + e);
-  }
-};
- const refreshData = async () => {
     try {
-      const [jobsRes, invRes, salesRes, statsRes] = await Promise.all([
-        fetch(`${API_URL}/production/jobs`),  // Tous les jobs non-collected
+      console.log("🔵 START: Collecting job", jobId);
+
+      const response = await fetch(`${API_URL}/production/jobs/${jobId}/collect`, {
+        method: 'POST'
+      });
+
+      console.log("🔵 Response status:", response.status);
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+
+      const result = await response.json();
+      console.log("✅ Collect SUCCESS:", result);
+
+      // Attendre 500ms
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      console.log("🔄 Refreshing all data...");
+      await refreshData();
+      console.log("✅ Refresh COMPLETE!");
+
+    } catch (e) {
+      console.error("❌ ERROR collecting job:", e);
+      alert("Erreur lors de la collecte : " + e);
+    }
+  };
+  const refreshData = async () => {
+    try {
+      const [processingRes, readyRes, invRes, salesRes, statsRes] = await Promise.all([
+        fetch(`${API_URL}/production/jobs?status=processing`),
+        fetch(`${API_URL}/production/jobs?status=ready`),
         fetch(`${API_URL}/production/inventory`),
         fetch(`${API_URL}/production/sales?limit=10`),
         fetch(`${API_URL}/production/sales/stats`)
       ]);
-      
-      setJobs(await jobsRes.json());
+
+      const processingJobs = await processingRes.json();
+      const readyJobs = await readyRes.json();
+
+      console.log("🔄 Refresh - Processing:", processingJobs.length, "Ready:", readyJobs.length);
+
+      // Combiner les 2 listes
+      setJobs([...processingJobs, ...readyJobs]);
+
       setInventory(await invRes.json());
       setSales(await salesRes.json());
       setStats(await statsRes.json());
@@ -666,11 +717,13 @@ export default function ProductionPage() {
     );
   }
 
-  const activeJobs = jobs.filter(j => 
-  j.status === "processing" || 
-  j.status === "ready" || 
-  j.status === "collected"
-);
+  const activeJobs = jobs.filter(j =>
+    j.status === "processing" ||
+    j.status === "ready" ||
+    j.status === "collected"
+  );
+  const processingJobs = jobs.filter(j => j.status === "processing");
+  const readyJobs = jobs.filter(j => j.status === "ready");
   const totalInventoryValue = inventory.reduce((sum, item) => sum + item.estimated_total_value, 0);
 
   return (
@@ -682,7 +735,7 @@ export default function ProductionPage() {
     }}>
       <HexBackground />
       <ScanLine />
-      
+
       <div style={{
         maxWidth: '1800px',
         margin: '0 auto',
@@ -705,7 +758,7 @@ export default function ProductionPage() {
             height: '3px',
             background: `linear-gradient(90deg, ${COLORS.red}, ${COLORS.redDark}, transparent)`
           }} />
-          
+
           <div style={{
             display: 'flex',
             alignItems: 'center',
@@ -743,7 +796,7 @@ export default function ProductionPage() {
               </h1>
             </div>
           </div>
-          
+
           <div style={{
             display: 'flex',
             gap: '32px',
@@ -824,40 +877,149 @@ export default function ProductionPage() {
           })}
         </div>
 
-        {/* NEW JOB FORM */}
-        {activeTab === "jobs" && <NewJobForm onJobCreated={refreshData} />}
-        
         {/* CONTENT */}
         {activeTab === "jobs" && (
           <div>
-            {activeJobs.length === 0 ? (
+            {/* FORMULAIRE NOUVEAU JOB */}
+            <NewJobForm onJobCreated={refreshData} />
+            <SalvageJobForm onJobCreated={refreshData} /> 
+
+            {/* SECTION 1: JOBS EN COURS */}
+            <div style={{ marginBottom: '40px' }}>
               <div style={{
-                textAlign: 'center',
-                padding: '80px 20px',
-                background: COLORS.bgMedium,
-                border: `1px dashed ${COLORS.orange}40`,
-                borderRadius: '2px'
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px',
+                marginBottom: '20px',
+                padding: '14px 20px',
+                background: `linear-gradient(135deg, ${COLORS.orange}15 0%, ${COLORS.orange}08 100%)`,
+                border: `1px solid ${COLORS.orange}40`,
+                borderLeft: `3px solid ${COLORS.orange}`,
+                borderRadius: '2px',
+                position: 'relative',
+                overflow: 'hidden'
               }}>
-                <AlertTriangle style={{ width: '48px', height: '48px', color: COLORS.textTertiary, margin: '0 auto 16px' }} />
                 <div style={{
-                  color: COLORS.textSecondary,
-                  fontSize: '12px',
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  width: '100%',
+                  height: '2px',
+                  background: `linear-gradient(90deg, ${COLORS.orange}, transparent)`
+                }} />
+
+                <Clock style={{ width: '20px', height: '20px', color: COLORS.orange }} />
+                <span style={{
+                  fontSize: '14px',
+                  fontWeight: 700,
+                  color: COLORS.orange,
                   letterSpacing: '2px',
-                  fontFamily: 'monospace',
-                  textTransform: 'uppercase'
+                  textTransform: 'uppercase',
+                  fontFamily: 'monospace'
                 }}>
-                  NO ACTIVE REFINING JOBS
-                </div>
+          // PROCESSING
+                </span>
+                <span style={{
+                  marginLeft: 'auto',
+                  fontSize: '18px',
+                  fontWeight: 700,
+                  color: COLORS.orange,
+                  fontFamily: 'monospace'
+                }}>
+                  {processingJobs.length}
+                </span>
               </div>
-            ) : (
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fill, minmax(400px, 1fr))',
-                gap: '20px'
-              }}>
-                {activeJobs.map(job => (
-                  <JobCard key={job.id} job={job} onCollect={handleCollect} />
-                ))}
+
+              {processingJobs.length === 0 ? (
+                <div style={{
+                  textAlign: 'center',
+                  padding: '60px 20px',
+                  background: `${COLORS.bgMedium}80`,
+                  border: `1px dashed ${COLORS.orange}30`,
+                  borderRadius: '2px'
+                }}>
+                  <Clock style={{ width: '40px', height: '40px', color: COLORS.textTertiary, margin: '0 auto 12px', opacity: 0.5 }} />
+                  <div style={{
+                    color: COLORS.textSecondary,
+                    fontSize: '11px',
+                    letterSpacing: '1.5px',
+                    fontFamily: 'monospace',
+                    textTransform: 'uppercase'
+                  }}>
+                    No jobs currently processing
+                  </div>
+                </div>
+              ) : (
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fill, minmax(400px, 1fr))',
+                  gap: '20px'
+                }}>
+                  {processingJobs.map(job => (
+                    <JobCard key={job.id} job={job} onCollect={handleCollect} />
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* SECTION 2: READY TO COLLECT */}
+            {readyJobs.length > 0 && (
+              <div style={{ marginBottom: '40px' }}>
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '12px',
+                  marginBottom: '20px',
+                  padding: '14px 20px',
+                  background: `linear-gradient(135deg, ${COLORS.greenOlive}20 0%, ${COLORS.greenOlive}10 100%)`,
+                  border: `1px solid ${COLORS.greenOlive}60`,
+                  borderLeft: `3px solid ${COLORS.greenOlive}`,
+                  borderRadius: '2px',
+                  position: 'relative',
+                  overflow: 'hidden',
+                  boxShadow: `0 0 20px ${COLORS.greenOlive}15`
+                }}>
+                  <div style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    width: '100%',
+                    height: '2px',
+                    background: `linear-gradient(90deg, ${COLORS.greenOlive}, transparent)`
+                  }} />
+
+                  <CheckCircle style={{ width: '20px', height: '20px', color: COLORS.greenOlive }} />
+                  <span style={{
+                    fontSize: '14px',
+                    fontWeight: 700,
+                    color: COLORS.greenOlive,
+                    letterSpacing: '2px',
+                    textTransform: 'uppercase',
+                    fontFamily: 'monospace'
+                  }}>
+                    ✓ READY TO COLLECT
+                  </span>
+                  <span style={{
+                    marginLeft: 'auto',
+                    fontSize: '18px',
+                    fontWeight: 700,
+                    color: COLORS.greenOlive,
+                    fontFamily: 'monospace',
+                    textShadow: `0 0 10px ${COLORS.greenOlive}60`
+                  }}>
+                    {readyJobs.length}
+                  </span>
+                </div>
+
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fill, minmax(400px, 1fr))',
+                  gap: '20px'
+                }}>
+                  {readyJobs.map(job => (
+                    <JobCard key={job.id} job={job} onCollect={handleCollect} />
+                  ))}
+                </div>
               </div>
             )}
           </div>
@@ -865,6 +1027,9 @@ export default function ProductionPage() {
 
         {activeTab === "inventory" && (
           <div>
+            {/* FORMULAIRE DE VENTE */}
+            <SaleForm inventory={inventory} onSaleCompleted={refreshData} />
+
             {inventory.length === 0 ? (
               <div style={{
                 textAlign: 'center',
@@ -885,19 +1050,50 @@ export default function ProductionPage() {
                 </div>
               </div>
             ) : (
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
-                gap: '16px'
-              }}>
-                {inventory.map(item => (
-                  <InventoryCard key={item.id} item={item} />
-                ))}
-              </div>
+              <>
+                {/* FILTRES */}
+                <InventoryFilters
+                  inventory={inventory}
+                  onFilteredChange={setFilteredInventory}
+                />
+
+                {/* GRILLE INVENTAIRE */}
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+                  gap: '16px'
+                }}>
+                  {(filteredInventory.length > 0 ? filteredInventory : inventory).map(item => (
+                    <InventoryCard key={item.id} item={item} />
+                  ))}
+                </div>
+
+                {/* NO RESULTS MESSAGE */}
+                {filteredInventory.length === 0 && inventory.length > 0 && (
+                  <div style={{
+                    textAlign: 'center',
+                    padding: '60px 20px',
+                    background: `${COLORS.orange}10`,
+                    border: `1px dashed ${COLORS.orange}40`,
+                    borderRadius: '2px',
+                    marginTop: '20px'
+                  }}>
+                    <Filter style={{ width: '40px', height: '40px', color: COLORS.textTertiary, margin: '0 auto 12px', opacity: 0.5 }} />
+                    <div style={{
+                      color: COLORS.textSecondary,
+                      fontSize: '12px',
+                      letterSpacing: '2px',
+                      fontFamily: 'monospace',
+                      textTransform: 'uppercase'
+                    }}>
+                      NO MATERIALS MATCH FILTERS
+                    </div>
+                  </div>
+                )}
+              </>
             )}
           </div>
         )}
-
         {activeTab === "sales" && (
           <div>
             {stats && (
@@ -994,8 +1190,8 @@ export default function ProductionPage() {
                     fontFamily: 'monospace',
                     transition: 'background 0.2s ease'
                   }}
-                  onMouseEnter={(e) => e.currentTarget.style.background = `${COLORS.orange}10`}
-                  onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}>
+                    onMouseEnter={(e) => e.currentTarget.style.background = `${COLORS.orange}10`}
+                    onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}>
                     <div style={{ flex: 1 }}>
                       <div style={{ color: COLORS.textPrimary, fontWeight: 600, marginBottom: '4px' }}>
                         {sale.material_name}

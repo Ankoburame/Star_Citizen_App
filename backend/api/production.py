@@ -205,6 +205,10 @@ def get_refining_jobs(
     
     if status:
         query = query.filter(RefiningJob.status == status)
+    else:
+        # Par défaut, renvoyer processing ET ready (pas collected ni cancelled)
+        query = query.filter(RefiningJob.status.in_(["processing", "ready"]))
+
     if refinery_id:
         query = query.filter(RefiningJob.refinery_id == refinery_id)
     if job_type:
