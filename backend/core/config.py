@@ -28,7 +28,7 @@ class Config:
         self.UEX_API_TOKEN = self._get_required_env("UEX_API_TOKEN")
         self.DATABASE_URL = self._get_env(
             "DATABASE_URL",
-            "postgresql://sc_user:qsp1MhWM9S4QWHvaruNv@localhost:5432/starcitizen_prod"
+            "postgresql://postgres:qsp1MhWM9S4QWHvaruNv@localhost:5432/starcitizen_prod"
         )
     
     @staticmethod
