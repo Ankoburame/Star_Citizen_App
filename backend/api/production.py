@@ -14,6 +14,7 @@ from models.refining_job import RefiningJob, RefiningJobMaterial
 from models.inventory import Inventory
 from models.sale import Sale
 from models.material import Material
+from sqlalchemy import text  # ← AJOUTER EN HAUT DU FICHIER (ligne ~10)
 
 router = APIRouter(prefix="/production", tags=["production"])
 
@@ -245,23 +246,29 @@ def collect_refining_job(job_id: int, db: Session = Depends(get_db)):
     
     # Transférer les matériaux vers l'inventaire
     for job_mat in job.materials:
-        # Chercher ou créer l'entrée d'inventaire
+    # Chercher ou créer l'entrée d'inventaire
         inventory = db.query(Inventory).filter(
-            Inventory.refinery_id == job.refinery_id,
-            Inventory.material_id == job_mat.material_id,
-            Inventory.user_id == job.user_id
-        ).first()
-        
-        if inventory:
-            inventory.add_quantity(float(job_mat.quantity_refined))
-        else:
-            inventory = Inventory(
-                refinery_id=job.refinery_id,
-                material_id=job_mat.material_id,
-                user_id=job.user_id,
-                quantity=job_mat.quantity_refined
-            )
-            db.add(inventory)
+        Inventory.refinery_id == job.refinery_id,
+        Inventory.material_id == job_mat.material_id,
+        Inventory.user_id == job.user_id
+    ).first()
+    
+    # Convertir quantité brute en SCU (÷ 100)
+    from decimal import Decimal  # ← AJOUTER EN HAUT DU FICHIER (ligne ~10)
+
+# Convertir quantité brute en SCU (÷ 100)
+    quantity_scu = Decimal(str(job_mat.quantity_refined)) / Decimal('100')
+
+    if inventory:
+        inventory.add_quantity(quantity_scu)  # ✅ Decimal + Decimal OK
+    else:
+        inventory = Inventory(
+            refinery_id=job.refinery_id,
+            material_id=job_mat.material_id,
+            user_id=job.user_id,
+            quantity=quantity_scu  # ✅ Decimal OK
+        )
+        db.add(inventory)
     
     # Marquer le job comme collecté
     job.status = "collected"
@@ -463,11 +470,11 @@ def _build_inventory_schema(inv: Inventory, db: Session) -> InventorySchema:
     """Construit le schema d'inventaire avec prix estimé."""
     # Récupérer le prix de vente moyen depuis market_prices
     avg_price_query = db.execute(
-        """
-        SELECT AVG(sell_price) as avg_price
-        FROM market_prices
-        WHERE material_id = :mat_id AND sell_price IS NOT NULL
-        """,
+        text("""
+            SELECT AVG(sell_price) as avg_price
+            FROM market_prices
+            WHERE material_id = :mat_id AND sell_price IS NOT NULL
+        """),
         {"mat_id": inv.material_id}
     ).fetchone()
     

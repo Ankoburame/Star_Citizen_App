@@ -83,7 +83,7 @@ app.add_middleware(
 # ============================================================================
 
 app.include_router(materials_router, prefix="/materials", tags=["Materials"])
-app.include_router(production_router, prefix="/production", tags=["Production"])
+app.include_router(production_router, tags=["Production"])  # ✅ Sans prefix
 app.include_router(trade_router, prefix="/trade", tags=["Trade"])
 app.include_router(dashboard_router, prefix="/dashboard", tags=["Dashboard"])
 app.include_router(pricing_router, tags=["Pricing"])  # Already has /pricing prefix

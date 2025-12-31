@@ -571,12 +571,12 @@ export default function ProductionPage() {
     async function loadData() {
       try {
         const [jobsRes, invRes, salesRes, statsRes] = await Promise.all([
-          fetch(`${API_URL}/production/jobs?status=processing`),
-          fetch(`${API_URL}/production/inventory`),
-          fetch(`${API_URL}/production/sales?limit=10`),
-          fetch(`${API_URL}/production/sales/stats`)
-        ]);
-        
+        fetch(`${API_URL}/production/jobs?status=processing`),
+        fetch(`${API_URL}/production/inventory`),
+        fetch(`${API_URL}/production/sales?limit=10`),
+        fetch(`${API_URL}/production/sales/stats`)
+      ]);
+              
         setJobs(await jobsRes.json());
         setInventory(await invRes.json());
         setSales(await salesRes.json());
@@ -594,20 +594,38 @@ export default function ProductionPage() {
   }, [mounted]);
 
   const handleCollect = async (jobId: number) => {
-    try {
-      await fetch(`${API_URL}/production/jobs/${jobId}/collect`, { method: 'POST' });
-      const jobsRes = await fetch(`${API_URL}/production/jobs?status=processing`);
-      const invRes = await fetch(`${API_URL}/production/inventory`);
-      setJobs(await jobsRes.json());
-      setInventory(await invRes.json());
-    } catch (e) {
-      console.error("Error collecting job:", e);
+  try {
+    console.log("🔵 START: Collecting job", jobId);
+    
+    const response = await fetch(`${API_URL}/production/jobs/${jobId}/collect`, { 
+      method: 'POST' 
+    });
+    
+    console.log("🔵 Response status:", response.status);
+    
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
     }
-  };
+    
+    const result = await response.json();
+    console.log("✅ Collect SUCCESS:", result);
+    
+    // Attendre 500ms
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
+    console.log("🔄 Refreshing all data...");
+    await refreshData();
+    console.log("✅ Refresh COMPLETE!");
+    
+  } catch (e) {
+    console.error("❌ ERROR collecting job:", e);
+    alert("Erreur lors de la collecte : " + e);
+  }
+};
  const refreshData = async () => {
     try {
       const [jobsRes, invRes, salesRes, statsRes] = await Promise.all([
-        fetch(`${API_URL}/production/jobs?status=processing`),
+        fetch(`${API_URL}/production/jobs`),  // Tous les jobs non-collected
         fetch(`${API_URL}/production/inventory`),
         fetch(`${API_URL}/production/sales?limit=10`),
         fetch(`${API_URL}/production/sales/stats`)
@@ -648,7 +666,11 @@ export default function ProductionPage() {
     );
   }
 
-  const activeJobs = jobs.filter(j => j.status === "processing");
+  const activeJobs = jobs.filter(j => 
+  j.status === "processing" || 
+  j.status === "ready" || 
+  j.status === "collected"
+);
   const totalInventoryValue = inventory.reduce((sum, item) => sum + item.estimated_total_value, 0);
 
   return (

@@ -20,10 +20,24 @@ interface DashboardData {
 
 interface RefiningJob {
   id: number;
-  material_name: string;
-  quantity: number;
-  remaining_seconds: number;
-  total_seconds: number;
+  refinery_name: string;
+  refinery_system: string;
+  job_type: string;
+  total_cost: number;
+  processing_time: number;
+  status: string;
+  start_time: string;
+  end_time: string;
+  seconds_remaining: number;      // ✅ Nouveau nom
+  progress_percentage: number;    // ✅ Nouveau nom
+  materials: Array<{
+    id: number;
+    material_id: number;
+    material_name: string;
+    quantity_refined: number;
+    unit: string;
+  }>;
+  notes?: string;
 }
 
 function formatNumber(value: number): string {
@@ -49,15 +63,16 @@ export default function DashboardPage() {
         try {
             // Charger seulement les jobs de raffinerie
             const res = await fetch(API_URL + "/production/jobs?status=processing");
-            const jobs = await res.json();
+            const jobsData = await res.json();
             
-            setRefiningJobs(jobs);
+            setJobs(jobsData);  // ✅ setJobs existe
             
             // Dashboard data vide pour l'instant (on le fera plus tard)
-            setDashboardData({
-            total_profit: 0,
-            active_jobs: jobs.length,
-            materials_in_stock: 0
+            setDashboard({  // ✅ setDashboard existe
+            stock_total: 0,
+            estimated_stock_value: 0,
+            active_refining: jobsData.length,
+            refining_history: []
             });
         } catch (e) {
             console.error("Error loading dashboard:", e);
@@ -401,11 +416,9 @@ export default function DashboardPage() {
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             {jobs.map((job) => {
-              const progress = job.total_seconds > 0
-                ? ((job.total_seconds - job.remaining_seconds) / job.total_seconds) * 100
-                : 100;
-              
-              const etaMin = Math.ceil(job.remaining_seconds / 60);
+              const progress = job.progress_percentage || 0;
+
+              const etaMin = Math.ceil(job.seconds_remaining / 60);
               
               return (
                 <div 
