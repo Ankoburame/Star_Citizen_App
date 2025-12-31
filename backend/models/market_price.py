@@ -21,3 +21,8 @@ class MarketPrice(Base):
     # ✅ AJOUTEZ CETTE LIGNE
     material = relationship("Material", back_populates="market_prices")
     location_obj = relationship("Location", back_populates="market_prices")
+
+    @property
+    def location(self):
+        """Alias pour location_obj (compatibilité)."""
+        return self.location_obj
