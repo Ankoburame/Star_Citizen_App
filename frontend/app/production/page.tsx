@@ -1199,6 +1199,9 @@ export default function ProductionPage() {
                       <div style={{ color: COLORS.textSecondary, fontSize: '10px' }}>
                         {formatNumber(sale.quantity_sold)} units @ {formatNumber(sale.unit_price)} aUEC
                       </div>
+                      <div style={{ color: COLORS.textSecondary, fontSize: '10px' }}>
+                        {formatNumber(sale.quantity_sold)} units @ {formatNumber(sale.unit_price)} aUEC
+                      </div>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
                       <div style={{ textAlign: 'right' }}>
