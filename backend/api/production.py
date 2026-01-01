@@ -202,9 +202,9 @@ def get_refining_jobs(
 ):
     """Liste les jobs de raffinerie."""
     query = db.query(RefiningJob).options(
-            joinedload(RefiningJob.refinery),
-            joinedload(RefiningJob.materials).joinedload(RefiningJobMaterial.material)
-            ).filter(RefiningJob.user_id == current_user.id)
+        joinedload(RefiningJob.refinery),
+        joinedload(RefiningJob.materials).joinedload(RefiningJobMaterial.material)
+        ).filter(RefiningJob.user_id == current_user.id)
     
     if status:
         query = query.filter(RefiningJob.status == status)
