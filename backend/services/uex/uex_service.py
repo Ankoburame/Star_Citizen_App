@@ -281,7 +281,7 @@ def refresh_single_material(
                 
                 market_price = MarketPrice(
                     material_id=material.id,
-                    location=UEX_LOCATION,
+                    location_string=UEX_LOCATION,
                     sell_price=sell_price,
                     buy_price=commodity.get("price_buy"),
                     source="UEX",
