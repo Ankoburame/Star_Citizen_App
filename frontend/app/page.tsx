@@ -64,19 +64,32 @@ export default function DashboardPage() {
             try {
                 // Charger jobs en cours + inventaire
                 const [processingRes, invRes] = await Promise.all([
-                    fetch(`${API_URL}/production/jobs?status=processing`),
-                    fetch(`${API_URL}/production/inventory`)
+                    fetch(`${API_URL}/production/jobs?status=processing`, {
+                        headers: {
+                            Authorization: `Bearer ${localStorage.getItem("token")}`
+                        }
+                    }),
+                    fetch(`${API_URL}/production/inventory`, {
+                        headers: {
+                            Authorization: `Bearer ${localStorage.getItem("token")}`
+                        }
+                    })
                 ]);
 
                 const processingData = await processingRes.json();
                 const inventoryData = await invRes.json();
 
-                setJobs(processingData);
+                // ✅ SÉCURITÉ : Vérifier que c'est bien un array
+                setJobs(Array.isArray(processingData) ? processingData : []);
 
-                // Calculer stock total et valeur
-                const totalStock = inventoryData.reduce((sum: number, item: any) => sum + item.quantity, 0);
-                const totalValue = inventoryData.reduce((sum: number, item: any) => sum + item.estimated_total_value, 0);
+                // ✅ SÉCURITÉ : Vérifier avant reduce
+                let totalStock = 0;
+                let totalValue = 0;
 
+                if (Array.isArray(inventoryData)) {
+                    totalStock = inventoryData.reduce((sum: number, item: any) => sum + item.quantity, 0);
+                    totalValue = inventoryData.reduce((sum: number, item: any) => sum + item.estimated_total_value, 0);
+                }
                 // Essayer de charger l'historique (peut échouer)
                 let history = [];
                 try {
