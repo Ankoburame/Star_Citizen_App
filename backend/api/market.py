@@ -300,22 +300,22 @@ def get_material_prices(
         )
     
     price_list = [
-        PriceInfo(
-            location=LocationInfo(
-                id=p.location_obj.id,
-                name=p.location_obj.name,
-                code=p.location_obj.code,
-                system=p.location_obj.system,
-                planet=p.location_obj.planet,
-                location_type=p.location_obj.location_type,
-                full_path=p.location_obj.full_location_path,
-            ),
-            buy_price=p.buy_price,
-            sell_price=p.sell_price,
-            updated_at=p.updated_at,
-        )
-        for p in prices
-    ]
+    PriceInfo(
+        location=LocationInfo(
+            id=p.location_obj.id if p.location_obj else None,
+            name=p.location_obj.name if p.location_obj else (p.location_string or "Unknown"),
+            code=p.location_obj.code if p.location_obj else "UNK",
+            system=p.location_obj.system if p.location_obj else "Unknown",
+            planet=p.location_obj.planet if p.location_obj else None,
+            location_type=p.location_obj.location_type if p.location_obj else "Unknown",
+            full_path=p.location_obj.full_location_path if p.location_obj else (p.location_string or "Unknown Location"),
+        ),
+        buy_price=p.buy_price,
+        sell_price=p.sell_price,
+        updated_at=p.updated_at,
+    )
+    for p in prices
+]
     
     return MaterialDetailedMarket(
         material=material_info,
