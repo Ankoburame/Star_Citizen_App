@@ -62,57 +62,29 @@ export default function DashboardPage() {
 
         async function loadData() {
             try {
-                // Charger jobs en cours + inventaire
-                const [processingRes, invRes] = await Promise.all([
-                    fetch(`${API_URL}/production/jobs?status=processing`, {
-                        headers: {
-                            Authorization: `Bearer ${localStorage.getItem("token")}`
-                        }
-                    }),
-                    fetch(`${API_URL}/production/inventory`, {
-                        headers: {
-                            Authorization: `Bearer ${localStorage.getItem("token")}`
-                        }
-                    })
-                ]);
 
-                const processingData = await processingRes.json();
-                const inventoryData = await invRes.json();
+                // Charger les stats globales du dashboard (tous les users)
+                const dashboardRes = await fetch(`${API_URL}/dashboard/stats`);
+                const dashboardData = await dashboardRes.json();
 
-                // ✅ SÉCURITÉ : Vérifier que c'est bien un array
-                setJobs(Array.isArray(processingData) ? processingData : []);
-
-                // ✅ SÉCURITÉ : Vérifier avant reduce
-                let totalStock = 0;
-                let totalValue = 0;
-
-                if (Array.isArray(inventoryData)) {
-                    totalStock = inventoryData.reduce((sum: number, item: any) => sum + item.quantity, 0);
-                    totalValue = inventoryData.reduce((sum: number, item: any) => sum + item.estimated_total_value, 0);
-                }
-                // Essayer de charger l'historique (peut échouer)
-                let history = [];
-                try {
-                    const collectedRes = await fetch(`${API_URL}/production/jobs?status=collected&limit=5`);
-                    if (collectedRes.ok) {
-                        const collectedData = await collectedRes.json();
-                        history = collectedData.map((job: any) => ({
-                            id: job.id,
-                            material: job.materials.map((m: any) => m.material_name).join(', '),
-                            quantity: job.materials.reduce((sum: number, m: any) => sum + m.quantity_refined, 0),
-                            ended_at: job.end_time || job.created_at
-                        }));
+                // Charger les jobs de l'utilisateur connecté
+                const userJobsRes = await fetch(`${API_URL}/production/jobs?status=processing`, {
+                    headers: {
+                        Authorization: `Bearer ${localStorage.getItem("token")}`
                     }
-                } catch (historyError) {
-                    console.log("Could not load history:", historyError);
-                }
+                });
+                const userJobsData = await userJobsRes.json();
+
+                // Mettre à jour les états
+                setJobs(Array.isArray(userJobsData) ? userJobsData : []);
 
                 setDashboard({
-                    stock_total: totalStock,
-                    estimated_stock_value: totalValue,
-                    active_refining: processingData.length,
-                    refining_history: history
+                    stock_total: dashboardData.stock_total || 0,
+                    estimated_stock_value: dashboardData.estimated_stock_value || 0,
+                    active_refining: dashboardData.active_refining || 0,
+                    refining_history: dashboardData.refining_history || []
                 });
+
             } catch (e) {
                 console.error("Error loading dashboard:", e);
                 // Fallback en cas d'erreur totale
