@@ -22,7 +22,8 @@ from api.price_history import router as history_router
 from api import market, price_history
 from api import market, price_history, production
 from api import production, market, commerce
-from api import auth 
+from api import auth
+from models.user import User
 
 
 @asynccontextmanager
