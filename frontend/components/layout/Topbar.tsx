@@ -1,8 +1,10 @@
 "use client";
 
-import { Menu, Wifi, Settings, User, Bell, Search, LogOut, Home } from "lucide-react";
+import { Menu, Wifi, Settings, User, Bell, Search, LogOut, Home, Lock } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
 
 type TopbarProps = {
   sidebarOpen: boolean;
@@ -14,27 +16,32 @@ export function Topbar({ sidebarOpen, toggleSidebar }: TopbarProps) {
   const [currentTime, setCurrentTime] = useState<Date | null>(null);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [user, setUser] = useState<any>(null);
+  
+  // Password change modal states
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [oldPassword, setOldPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [passwordError, setPasswordError] = useState("");
+  const [passwordSuccess, setPasswordSuccess] = useState(false);
+  const [changingPassword, setChangingPassword] = useState(false);
 
   // Charger l'utilisateur depuis localStorage
   useEffect(() => {
-  const loadUser = () => {
-    const storedUser = localStorage.getItem("user");
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
-    }
-  };
+    const loadUser = () => {
+      const storedUser = localStorage.getItem("user");
+      if (storedUser) {
+        setUser(JSON.parse(storedUser));
+      }
+    };
 
-  // Charger au démarrage
-  loadUser();
+    loadUser();
+    window.addEventListener("user-login", loadUser);
 
-  // Écouter l'événement de login
-  window.addEventListener("user-login", loadUser);
-
-  // Cleanup
-  return () => {
-    window.removeEventListener("user-login", loadUser);
-  };
-}, []);
+    return () => {
+      window.removeEventListener("user-login", loadUser);
+    };
+  }, []);
 
   // Timer
   useEffect(() => {
@@ -47,10 +54,8 @@ export function Topbar({ sidebarOpen, toggleSidebar }: TopbarProps) {
 
   const handleUserClick = () => {
     if (!user) {
-      // Pas connecté → rediriger vers login
       router.push("/login");
     } else {
-      // Connecté → toggle menu
       setUserMenuOpen(!userMenuOpen);
     }
   };
@@ -63,391 +68,665 @@ export function Topbar({ sidebarOpen, toggleSidebar }: TopbarProps) {
     router.push("/login");
   };
 
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPasswordError("");
+    setPasswordSuccess(false);
+
+    // Validation
+    if (newPassword !== confirmPassword) {
+      setPasswordError("New passwords don't match");
+      return;
+    }
+
+    if (newPassword.length < 6) {
+      setPasswordError("Password must be at least 6 characters");
+      return;
+    }
+
+    setChangingPassword(true);
+
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch(`${API_URL}/auth/change-password`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          old_password: oldPassword,
+          new_password: newPassword,
+        }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.detail || "Failed to change password");
+      }
+
+      // Success
+      setPasswordSuccess(true);
+      setOldPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+
+      // Close modal after 2 seconds
+      setTimeout(() => {
+        setShowPasswordModal(false);
+        setPasswordSuccess(false);
+      }, 2000);
+    } catch (err: any) {
+      setPasswordError(err.message);
+    } finally {
+      setChangingPassword(false);
+    }
+  };
+
   return (
-    <header
-      style={{
-        height: "72px",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
-        padding: "0 32px",
-        background: "linear-gradient(90deg, #0a0e1a 0%, #050810 100%)",
-        borderBottom: "1px solid rgba(6, 182, 212, 0.1)",
-        position: "relative",
-      }}
-    >
-      {/* Ligne lumineuse en bas */}
-      <div
+    <>
+      <header
         style={{
-          position: "absolute",
-          bottom: 0,
-          left: 0,
-          right: 0,
-          height: "1px",
-          background:
-            "linear-gradient(90deg, transparent 0%, #06b6d4 50%, transparent 100%)",
-          opacity: 0.3,
+          height: "72px",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          padding: "0 32px",
+          background: "linear-gradient(90deg, #0a0e1a 0%, #050810 100%)",
+          borderBottom: "1px solid rgba(6, 182, 212, 0.1)",
+          position: "relative",
         }}
-      />
-
-      {/* LEFT SIDE */}
-      <div style={{ display: "flex", alignItems: "center", gap: "24px" }}>
-        {/* Menu Toggle */}
-        <button
-          onClick={toggleSidebar}
-          style={{
-            width: "40px",
-            height: "40px",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            background: "rgba(6, 182, 212, 0.05)",
-            border: "1px solid rgba(6, 182, 212, 0.2)",
-            borderRadius: "8px",
-            color: "#06b6d4",
-            cursor: "pointer",
-            transition: "all 0.2s ease",
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.background = "rgba(6, 182, 212, 0.1)";
-            e.currentTarget.style.borderColor = "rgba(6, 182, 212, 0.4)";
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.background = "rgba(6, 182, 212, 0.05)";
-            e.currentTarget.style.borderColor = "rgba(6, 182, 212, 0.2)";
-          }}
-        >
-          <Menu style={{ width: "20px", height: "20px" }} />
-        </button>
-
-        {/* Title */}
-        <div>
-          <h1
-            style={{
-              fontSize: "18px",
-              fontWeight: 700,
-              color: "white",
-              letterSpacing: "2px",
-              textTransform: "uppercase",
-              margin: 0,
-            }}
-          >
-            Star Citizen – Economy Tool
-          </h1>
-          <div
-            style={{
-              fontSize: "11px",
-              color: "#52525b",
-              letterSpacing: "1px",
-              marginTop: "2px",
-            }}
-          >
-            Resource Management System
-          </div>
-        </div>
-      </div>
-
-      {/* RIGHT SIDE */}
-      <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
-        {/* Search */}
-        <button
-          style={{
-            width: "40px",
-            height: "40px",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            background: "transparent",
-            border: "1px solid rgba(82, 82, 91, 0.3)",
-            borderRadius: "8px",
-            color: "#71717a",
-            cursor: "pointer",
-            transition: "all 0.2s ease",
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.borderColor = "rgba(6, 182, 212, 0.3)";
-            e.currentTarget.style.color = "#06b6d4";
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.borderColor = "rgba(82, 82, 91, 0.3)";
-            e.currentTarget.style.color = "#71717a";
-          }}
-        >
-          <Search style={{ width: "18px", height: "18px" }} />
-        </button>
-
-        {/* Notifications */}
-        <button
-          style={{
-            width: "40px",
-            height: "40px",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            background: "transparent",
-            border: "1px solid rgba(82, 82, 91, 0.3)",
-            borderRadius: "8px",
-            color: "#71717a",
-            cursor: "pointer",
-            transition: "all 0.2s ease",
-            position: "relative",
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.borderColor = "rgba(6, 182, 212, 0.3)";
-            e.currentTarget.style.color = "#06b6d4";
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.borderColor = "rgba(82, 82, 91, 0.3)";
-            e.currentTarget.style.color = "#71717a";
-          }}
-        >
-          <Bell style={{ width: "18px", height: "18px" }} />
-          <div
-            style={{
-              position: "absolute",
-              top: "8px",
-              right: "8px",
-              width: "6px",
-              height: "6px",
-              background: "#ef4444",
-              borderRadius: "50%",
-              boxShadow: "0 0 8px #ef4444",
-            }}
-          />
-        </button>
-
-        {/* Divider */}
+      >
         <div
           style={{
-            width: "1px",
-            height: "24px",
-            background: "rgba(82, 82, 91, 0.3)",
+            position: "absolute",
+            bottom: 0,
+            left: 0,
+            right: 0,
+            height: "1px",
+            background: "linear-gradient(90deg, transparent 0%, #06b6d4 50%, transparent 100%)",
+            opacity: 0.3,
           }}
         />
 
-        {/* Time Display */}
-        {currentTime && (
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "flex-end",
-            }}
-          >
-            <div
-              style={{
-                fontSize: "14px",
-                fontWeight: 600,
-                color: "#06b6d4",
-                fontFamily: "monospace",
-                letterSpacing: "1px",
-              }}
-            >
-              {currentTime.toLocaleTimeString("fr-FR", {
-                hour: "2-digit",
-                minute: "2-digit",
-                second: "2-digit",
-              })}
-            </div>
-            <div
-              style={{
-                fontSize: "10px",
-                color: "#52525b",
-                fontFamily: "monospace",
-              }}
-            >
-              {currentTime.toLocaleDateString("fr-FR")}
-            </div>
-          </div>
-        )}
-
-        {/* API Status */}
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "8px",
-            padding: "8px 16px",
-            background: "rgba(16, 185, 129, 0.1)",
-            border: "1px solid rgba(16, 185, 129, 0.3)",
-            borderRadius: "20px",
-          }}
-        >
-          <Wifi style={{ width: "14px", height: "14px", color: "#10b981" }} />
-          <span
-            style={{
-              fontSize: "11px",
-              color: "#10b981",
-              fontWeight: 600,
-              letterSpacing: "0.5px",
-            }}
-          >
-            ONLINE
-          </span>
-        </div>
-
-        {/* Settings */}
-        <button
-          style={{
-            width: "40px",
-            height: "40px",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            background: "transparent",
-            border: "1px solid rgba(82, 82, 91, 0.3)",
-            borderRadius: "8px",
-            color: "#71717a",
-            cursor: "pointer",
-            transition: "all 0.2s ease",
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.borderColor = "rgba(6, 182, 212, 0.3)";
-            e.currentTarget.style.color = "#06b6d4";
-            e.currentTarget.style.transform = "rotate(90deg)";
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.borderColor = "rgba(82, 82, 91, 0.3)";
-            e.currentTarget.style.color = "#71717a";
-            e.currentTarget.style.transform = "rotate(0deg)";
-          }}
-        >
-          <Settings style={{ width: "18px", height: "18px" }} />
-        </button>
-
-        {/* User Profile with Dropdown */}
-        <div style={{ position: "relative" }}>
+        {/* LEFT SIDE */}
+        <div style={{ display: "flex", alignItems: "center", gap: "24px" }}>
           <button
-            onClick={handleUserClick}
+            onClick={toggleSidebar}
             style={{
               width: "40px",
               height: "40px",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              background: user 
-                ? "linear-gradient(135deg, #06b6d4 0%, #0891b2 100%)"
-                : "linear-gradient(135deg, #71717a 0%, #52525b 100%)",
+              background: "rgba(6, 182, 212, 0.05)",
+              border: "1px solid rgba(6, 182, 212, 0.2)",
               borderRadius: "8px",
+              color: "#06b6d4",
               cursor: "pointer",
-              boxShadow: user 
-                ? "0 0 20px rgba(6, 182, 212, 0.3)"
-                : "0 0 10px rgba(113, 113, 122, 0.2)",
-              border: "none",
               transition: "all 0.2s ease",
             }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = "rgba(6, 182, 212, 0.1)";
+              e.currentTarget.style.borderColor = "rgba(6, 182, 212, 0.4)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = "rgba(6, 182, 212, 0.05)";
+              e.currentTarget.style.borderColor = "rgba(6, 182, 212, 0.2)";
+            }}
           >
-            <User style={{ width: "20px", height: "20px", color: "white" }} />
+            <Menu style={{ width: "20px", height: "20px" }} />
           </button>
 
-          {/* Dropdown Menu */}
-          {userMenuOpen && user && (
+          <div>
+            <h1
+              style={{
+                fontSize: "18px",
+                fontWeight: 700,
+                color: "white",
+                letterSpacing: "2px",
+                textTransform: "uppercase",
+                margin: 0,
+              }}
+            >
+              Star Citizen – Economy Tool
+            </h1>
+            <div
+              style={{
+                fontSize: "11px",
+                color: "#52525b",
+                letterSpacing: "1px",
+                marginTop: "2px",
+              }}
+            >
+              Resource Management System
+            </div>
+          </div>
+        </div>
+
+        {/* RIGHT SIDE */}
+        <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+          <button
+            style={{
+              width: "40px",
+              height: "40px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              background: "transparent",
+              border: "1px solid rgba(82, 82, 91, 0.3)",
+              borderRadius: "8px",
+              color: "#71717a",
+              cursor: "pointer",
+              transition: "all 0.2s ease",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.borderColor = "rgba(6, 182, 212, 0.3)";
+              e.currentTarget.style.color = "#06b6d4";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.borderColor = "rgba(82, 82, 91, 0.3)";
+              e.currentTarget.style.color = "#71717a";
+            }}
+          >
+            <Search style={{ width: "18px", height: "18px" }} />
+          </button>
+
+          <button
+            style={{
+              width: "40px",
+              height: "40px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              background: "transparent",
+              border: "1px solid rgba(82, 82, 91, 0.3)",
+              borderRadius: "8px",
+              color: "#71717a",
+              cursor: "pointer",
+              transition: "all 0.2s ease",
+              position: "relative",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.borderColor = "rgba(6, 182, 212, 0.3)";
+              e.currentTarget.style.color = "#06b6d4";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.borderColor = "rgba(82, 82, 91, 0.3)";
+              e.currentTarget.style.color = "#71717a";
+            }}
+          >
+            <Bell style={{ width: "18px", height: "18px" }} />
             <div
               style={{
                 position: "absolute",
-                top: "calc(100% + 8px)",
-                right: 0,
-                width: "220px",
-                background: "linear-gradient(135deg, #0a0e1a 0%, #050810 100%)",
-                border: "1px solid rgba(6, 182, 212, 0.3)",
-                borderRadius: "8px",
-                boxShadow: "0 8px 24px rgba(0, 0, 0, 0.5)",
-                zIndex: 1000,
-                overflow: "hidden",
+                top: "8px",
+                right: "8px",
+                width: "6px",
+                height: "6px",
+                background: "#ef4444",
+                borderRadius: "50%",
+                boxShadow: "0 0 8px #ef4444",
               }}
-            >
-              {/* User Info */}
+            />
+          </button>
+
+          <div style={{ width: "1px", height: "24px", background: "rgba(82, 82, 91, 0.3)" }} />
+
+          {currentTime && (
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end" }}>
               <div
                 style={{
-                  padding: "16px",
-                  borderBottom: "1px solid rgba(6, 182, 212, 0.2)",
+                  fontSize: "14px",
+                  fontWeight: 600,
+                  color: "#06b6d4",
+                  fontFamily: "monospace",
+                  letterSpacing: "1px",
                 }}
               >
-                <div
-                  style={{
-                    fontSize: "14px",
-                    fontWeight: 700,
-                    color: "#06b6d4",
-                    marginBottom: "4px",
-                  }}
-                >
-                  {user.username}
-                </div>
-                <div
-                  style={{
-                    fontSize: "11px",
-                    color: "#52525b",
-                    textTransform: "uppercase",
-                    letterSpacing: "1px",
-                  }}
-                >
-                  {user.role}
-                </div>
+                {currentTime.toLocaleTimeString("fr-FR", {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                  second: "2-digit",
+                })}
               </div>
-
-              {/* Menu Items */}
-              <button
-                onClick={() => {
-                  setUserMenuOpen(false);
-                  router.push("/");
-                }}
-                style={{
-                  width: "100%",
-                  padding: "12px 16px",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "12px",
-                  background: "transparent",
-                  border: "none",
-                  color: "#94a3b8",
-                  fontSize: "13px",
-                  cursor: "pointer",
-                  transition: "all 0.2s ease",
-                  textAlign: "left",
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = "rgba(6, 182, 212, 0.1)";
-                  e.currentTarget.style.color = "#06b6d4";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = "transparent";
-                  e.currentTarget.style.color = "#94a3b8";
-                }}
-              >
-                <Home style={{ width: "16px", height: "16px" }} />
-                Dashboard
-              </button>
-
-              <button
-                onClick={handleLogout}
-                style={{
-                  width: "100%",
-                  padding: "12px 16px",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "12px",
-                  background: "transparent",
-                  border: "none",
-                  color: "#ef4444",
-                  fontSize: "13px",
-                  cursor: "pointer",
-                  transition: "all 0.2s ease",
-                  textAlign: "left",
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = "rgba(239, 68, 68, 0.1)";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = "transparent";
-                }}
-              >
-                <LogOut style={{ width: "16px", height: "16px" }} />
-                Logout
-              </button>
+              <div style={{ fontSize: "10px", color: "#52525b", fontFamily: "monospace" }}>
+                {currentTime.toLocaleDateString("fr-FR")}
+              </div>
             </div>
           )}
+
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+              padding: "8px 16px",
+              background: "rgba(16, 185, 129, 0.1)",
+              border: "1px solid rgba(16, 185, 129, 0.3)",
+              borderRadius: "20px",
+            }}
+          >
+            <Wifi style={{ width: "14px", height: "14px", color: "#10b981" }} />
+            <span style={{ fontSize: "11px", color: "#10b981", fontWeight: 600, letterSpacing: "0.5px" }}>
+              ONLINE
+            </span>
+          </div>
+
+          <button
+            style={{
+              width: "40px",
+              height: "40px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              background: "transparent",
+              border: "1px solid rgba(82, 82, 91, 0.3)",
+              borderRadius: "8px",
+              color: "#71717a",
+              cursor: "pointer",
+              transition: "all 0.2s ease",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.borderColor = "rgba(6, 182, 212, 0.3)";
+              e.currentTarget.style.color = "#06b6d4";
+              e.currentTarget.style.transform = "rotate(90deg)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.borderColor = "rgba(82, 82, 91, 0.3)";
+              e.currentTarget.style.color = "#71717a";
+              e.currentTarget.style.transform = "rotate(0deg)";
+            }}
+          >
+            <Settings style={{ width: "18px", height: "18px" }} />
+          </button>
+
+          <div style={{ position: "relative" }}>
+            <button
+              onClick={handleUserClick}
+              style={{
+                width: "40px",
+                height: "40px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                background: user
+                  ? "linear-gradient(135deg, #06b6d4 0%, #0891b2 100%)"
+                  : "linear-gradient(135deg, #71717a 0%, #52525b 100%)",
+                borderRadius: "8px",
+                cursor: "pointer",
+                boxShadow: user ? "0 0 20px rgba(6, 182, 212, 0.3)" : "0 0 10px rgba(113, 113, 122, 0.2)",
+                border: "none",
+                transition: "all 0.2s ease",
+              }}
+            >
+              <User style={{ width: "20px", height: "20px", color: "white" }} />
+            </button>
+
+            {userMenuOpen && user && (
+              <div
+                style={{
+                  position: "absolute",
+                  top: "calc(100% + 8px)",
+                  right: 0,
+                  width: "220px",
+                  background: "linear-gradient(135deg, #0a0e1a 0%, #050810 100%)",
+                  border: "1px solid rgba(6, 182, 212, 0.3)",
+                  borderRadius: "8px",
+                  boxShadow: "0 8px 24px rgba(0, 0, 0, 0.5)",
+                  zIndex: 1000,
+                  overflow: "hidden",
+                }}
+              >
+                <div style={{ padding: "16px", borderBottom: "1px solid rgba(6, 182, 212, 0.2)" }}>
+                  <div style={{ fontSize: "14px", fontWeight: 700, color: "#06b6d4", marginBottom: "4px" }}>
+                    {user.username}
+                  </div>
+                  <div
+                    style={{
+                      fontSize: "11px",
+                      color: "#52525b",
+                      textTransform: "uppercase",
+                      letterSpacing: "1px",
+                    }}
+                  >
+                    {user.role}
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => {
+                    setUserMenuOpen(false);
+                    router.push("/");
+                  }}
+                  style={{
+                    width: "100%",
+                    padding: "12px 16px",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "12px",
+                    background: "transparent",
+                    border: "none",
+                    color: "#94a3b8",
+                    fontSize: "13px",
+                    cursor: "pointer",
+                    transition: "all 0.2s ease",
+                    textAlign: "left",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = "rgba(6, 182, 212, 0.1)";
+                    e.currentTarget.style.color = "#06b6d4";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = "transparent";
+                    e.currentTarget.style.color = "#94a3b8";
+                  }}
+                >
+                  <Home style={{ width: "16px", height: "16px" }} />
+                  Dashboard
+                </button>
+
+                {/* ✅ BOUTON CHANGE PASSWORD */}
+                <button
+                  onClick={() => {
+                    setUserMenuOpen(false);
+                    setShowPasswordModal(true);
+                  }}
+                  style={{
+                    width: "100%",
+                    padding: "12px 16px",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "12px",
+                    background: "transparent",
+                    border: "none",
+                    color: "#94a3b8",
+                    fontSize: "13px",
+                    cursor: "pointer",
+                    transition: "all 0.2s ease",
+                    textAlign: "left",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = "rgba(6, 182, 212, 0.1)";
+                    e.currentTarget.style.color = "#06b6d4";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = "transparent";
+                    e.currentTarget.style.color = "#94a3b8";
+                  }}
+                >
+                  <Lock style={{ width: "16px", height: "16px" }} />
+                  Change Password
+                </button>
+
+                <button
+                  onClick={handleLogout}
+                  style={{
+                    width: "100%",
+                    padding: "12px 16px",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "12px",
+                    background: "transparent",
+                    border: "none",
+                    color: "#ef4444",
+                    fontSize: "13px",
+                    cursor: "pointer",
+                    transition: "all 0.2s ease",
+                    textAlign: "left",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = "rgba(239, 68, 68, 0.1)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = "transparent";
+                  }}
+                >
+                  <LogOut style={{ width: "16px", height: "16px" }} />
+                  Logout
+                </button>
+              </div>
+            )}
+          </div>
         </div>
-      </div>
-    </header>
+      </header>
+
+      {/* ✅ MODAL CHANGE PASSWORD */}
+      {showPasswordModal && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: "rgba(0, 0, 0, 0.8)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 2000,
+            padding: "20px",
+          }}
+        >
+          <div
+            style={{
+              width: "100%",
+              maxWidth: "450px",
+              background: "linear-gradient(135deg, #030712 0%, #000000 100%)",
+              border: "1px solid rgba(6, 182, 212, 0.6)",
+              borderRadius: "4px",
+              padding: "32px",
+              boxShadow: "0 0 40px rgba(6, 182, 212, 0.3)",
+            }}
+          >
+            <h2
+              style={{
+                fontSize: "20px",
+                fontWeight: 700,
+                color: "#e2e8f0",
+                letterSpacing: "2px",
+                textTransform: "uppercase",
+                margin: "0 0 24px 0",
+                fontFamily: "monospace",
+              }}
+            >
+              CHANGE PASSWORD
+            </h2>
+
+            {passwordError && (
+              <div
+                style={{
+                  padding: "12px",
+                  background: "rgba(220, 38, 38, 0.2)",
+                  border: "1px solid #dc2626",
+                  borderRadius: "2px",
+                  color: "#dc2626",
+                  fontSize: "12px",
+                  marginBottom: "24px",
+                  fontFamily: "monospace",
+                }}
+              >
+                ⚠️ {passwordError}
+              </div>
+            )}
+
+            {passwordSuccess && (
+              <div
+                style={{
+                  padding: "12px",
+                  background: "rgba(132, 169, 140, 0.2)",
+                  border: "1px solid #84a98c",
+                  borderRadius: "2px",
+                  color: "#84a98c",
+                  fontSize: "12px",
+                  marginBottom: "24px",
+                  fontFamily: "monospace",
+                }}
+              >
+                ✅ Password changed successfully!
+              </div>
+            )}
+
+            <form onSubmit={handleChangePassword}>
+              <div style={{ marginBottom: "20px" }}>
+                <label
+                  style={{
+                    display: "block",
+                    fontSize: "10px",
+                    color: "#94a3b8",
+                    letterSpacing: "1px",
+                    textTransform: "uppercase",
+                    marginBottom: "8px",
+                    fontFamily: "monospace",
+                  }}
+                >
+                  CURRENT PASSWORD *
+                </label>
+                <input
+                  type="password"
+                  value={oldPassword}
+                  onChange={(e) => setOldPassword(e.target.value)}
+                  required
+                  style={{
+                    width: "100%",
+                    padding: "12px",
+                    background: "#0f172a",
+                    border: "1px solid #334155",
+                    borderRadius: "2px",
+                    color: "#e2e8f0",
+                    fontSize: "14px",
+                    fontFamily: "monospace",
+                    outline: "none",
+                    boxSizing: "border-box",
+                  }}
+                />
+              </div>
+
+              <div style={{ marginBottom: "20px" }}>
+                <label
+                  style={{
+                    display: "block",
+                    fontSize: "10px",
+                    color: "#94a3b8",
+                    letterSpacing: "1px",
+                    textTransform: "uppercase",
+                    marginBottom: "8px",
+                    fontFamily: "monospace",
+                  }}
+                >
+                  NEW PASSWORD *
+                </label>
+                <input
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  required
+                  style={{
+                    width: "100%",
+                    padding: "12px",
+                    background: "#0f172a",
+                    border: "1px solid #334155",
+                    borderRadius: "2px",
+                    color: "#e2e8f0",
+                    fontSize: "14px",
+                    fontFamily: "monospace",
+                    outline: "none",
+                    boxSizing: "border-box",
+                  }}
+                />
+              </div>
+
+              <div style={{ marginBottom: "28px" }}>
+                <label
+                  style={{
+                    display: "block",
+                    fontSize: "10px",
+                    color: "#94a3b8",
+                    letterSpacing: "1px",
+                    textTransform: "uppercase",
+                    marginBottom: "8px",
+                    fontFamily: "monospace",
+                  }}
+                >
+                  CONFIRM NEW PASSWORD *
+                </label>
+                <input
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  required
+                  style={{
+                    width: "100%",
+                    padding: "12px",
+                    background: "#0f172a",
+                    border: "1px solid #334155",
+                    borderRadius: "2px",
+                    color: "#e2e8f0",
+                    fontSize: "14px",
+                    fontFamily: "monospace",
+                    outline: "none",
+                    boxSizing: "border-box",
+                  }}
+                />
+              </div>
+
+              <div style={{ display: "flex", gap: "12px" }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowPasswordModal(false);
+                    setPasswordError("");
+                    setPasswordSuccess(false);
+                    setOldPassword("");
+                    setNewPassword("");
+                    setConfirmPassword("");
+                  }}
+                  style={{
+                    flex: 1,
+                    padding: "12px",
+                    background: "transparent",
+                    border: "1px solid #334155",
+                    borderRadius: "2px",
+                    color: "#94a3b8",
+                    fontSize: "13px",
+                    fontWeight: 700,
+                    letterSpacing: "1px",
+                    textTransform: "uppercase",
+                    cursor: "pointer",
+                    fontFamily: "monospace",
+                  }}
+                >
+                  CANCEL
+                </button>
+
+                <button
+                  type="submit"
+                  disabled={changingPassword}
+                  style={{
+                    flex: 1,
+                    padding: "12px",
+                    background: changingPassword
+                      ? "#334155"
+                      : "linear-gradient(135deg, #eab308 0%, #d97706 100%)",
+                    border: changingPassword ? "1px solid #334155" : "1px solid #eab308",
+                    borderRadius: "2px",
+                    color: "#0f172a",
+                    fontSize: "13px",
+                    fontWeight: 700,
+                    letterSpacing: "1px",
+                    textTransform: "uppercase",
+                    cursor: changingPassword ? "not-allowed" : "pointer",
+                    fontFamily: "monospace",
+                    boxShadow: changingPassword ? "none" : "0 0 20px rgba(234, 179, 8, 0.4)",
+                  }}
+                >
+                  {changingPassword ? "CHANGING..." : "CHANGE PASSWORD"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </>
   );
 }

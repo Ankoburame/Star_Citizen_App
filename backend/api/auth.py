@@ -11,6 +11,7 @@ from database import get_db
 from models.user import User
 from schemas.auth import UserCreate, UserLogin, UserResponse, Token
 from core.security import verify_password, get_password_hash, create_access_token, decode_access_token
+from schemas.auth import UserCreate, UserLogin, UserResponse, Token
 
 router = APIRouter()
 security = HTTPBearer()
@@ -149,3 +150,46 @@ def get_all_users(
     """Récupérer tous les utilisateurs (ADMIN only)."""
     users = db.query(User).order_by(User.created_at.desc()).all()
     return users
+
+@router.post("/change-password")
+def change_password(
+    data: ChangePassword,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Changer son mot de passe."""
+    # Vérifier l'ancien mot de passe
+    if not verify_password(data.old_password, current_user.password_hash):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Incorrect current password"
+        )
+    
+    # Changer le mot de passe
+    current_user.password_hash = get_password_hash(data.new_password)
+    db.commit()
+    
+    return {"message": "Password changed successfully"}
+
+@router.post("/reset-password/{user_id}")
+def reset_user_password(
+    user_id: int,
+    data: ResetPassword,
+    current_user: User = Depends(require_role(["admin"])),
+    db: Session = Depends(get_db)
+):
+    """Reset le mot de passe d'un utilisateur (ADMIN only)."""
+    # Trouver l'utilisateur
+    target_user = db.query(User).filter(User.id == user_id).first()
+    
+    if not target_user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+    
+    # Changer le mot de passe
+    target_user.password_hash = get_password_hash(data.new_password)
+    db.commit()
+    
+    return {"message": f"Password reset successfully for user {target_user.username}"}

@@ -31,3 +31,10 @@ class Token(BaseModel):
     access_token: str
     token_type: str
     user: UserResponse
+
+class ChangePassword(BaseModel):
+    old_password: str
+    new_password: str
+
+class ResetPassword(BaseModel):
+    new_password: str
