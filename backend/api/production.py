@@ -15,7 +15,7 @@ from models.inventory import Inventory
 from models.sale import Sale
 from models.material import Material
 from sqlalchemy import text
-from api.auth import get_current_user
+from api.auth import get_current_user, User
 from models.user import User
 
 router = APIRouter(prefix="/production", tags=["production"])
