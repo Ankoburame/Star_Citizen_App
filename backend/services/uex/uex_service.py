@@ -209,7 +209,7 @@ def refresh_all_prices(db: Session, force: bool = False) -> Dict[str, int]:
                 
                 market_price = MarketPrice(
                     material_id=material.id,
-                    location=UEX_LOCATION,
+                    location_string=UEX_LOCATION,
                     sell_price=sell_price,
                     buy_price=commodity.get("price_buy"),
                     source="UEX",
