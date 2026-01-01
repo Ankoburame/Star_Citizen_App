@@ -17,11 +17,24 @@ export function Topbar({ sidebarOpen, toggleSidebar }: TopbarProps) {
 
   // Charger l'utilisateur depuis localStorage
   useEffect(() => {
+  const loadUser = () => {
     const storedUser = localStorage.getItem("user");
     if (storedUser) {
       setUser(JSON.parse(storedUser));
     }
-  }, []);
+  };
+
+  // Charger au démarrage
+  loadUser();
+
+  // Écouter l'événement de login
+  window.addEventListener("user-login", loadUser);
+
+  // Cleanup
+  return () => {
+    window.removeEventListener("user-login", loadUser);
+  };
+}, []);
 
   // Timer
   useEffect(() => {

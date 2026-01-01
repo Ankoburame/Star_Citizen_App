@@ -74,8 +74,12 @@ def require_role(allowed_roles: list[str]):
 # ============================================================
 
 @router.post("/register", response_model=UserResponse)
-def register(user_data: UserCreate, db: Session = Depends(get_db)):
-    """Créer un nouveau compte (ADMIN only en production)."""
+def register(
+    user_data: UserCreate, 
+    current_user: User = Depends(require_role(["admin"])),  # ✅ ADMIN ONLY
+    db: Session = Depends(get_db)
+):
+    """Créer un nouveau compte (ADMIN only)."""
     # Vérifier si username existe
     if db.query(User).filter(User.username == user_data.username).first():
         raise HTTPException(
@@ -136,3 +140,12 @@ def login(credentials: UserLogin, db: Session = Depends(get_db)):
 def get_me(current_user: User = Depends(get_current_user)):
     """Récupérer les infos de l'utilisateur connecté."""
     return current_user
+
+@router.get("/users", response_model=list[UserResponse])
+def get_all_users(
+    current_user: User = Depends(require_role(["admin"])),
+    db: Session = Depends(get_db)
+):
+    """Récupérer tous les utilisateurs (ADMIN only)."""
+    users = db.query(User).order_by(User.created_at.desc()).all()
+    return users

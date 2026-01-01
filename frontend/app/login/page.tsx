@@ -49,6 +49,9 @@ export default function LoginPage() {
       localStorage.setItem("token", data.access_token);
       localStorage.setItem("user", JSON.stringify(data.user));
 
+      // Déclencher événement de login ✅
+      window.dispatchEvent(new Event("user-login"));
+
       // Rediriger vers le dashboard
       router.push("/");
       
