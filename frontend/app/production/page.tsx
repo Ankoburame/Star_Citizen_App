@@ -679,8 +679,13 @@ export default function ProductionPage() {
     try {
       console.log("🔵 START: Collecting job", jobId);
 
+      const token = localStorage.getItem("token");
+
       const response = await fetch(`${API_URL}/production/jobs/${jobId}/collect`, {
-        method: 'POST'
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
       });
 
       console.log("🔵 Response status:", response.status);
