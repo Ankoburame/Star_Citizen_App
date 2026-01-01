@@ -248,6 +248,8 @@ def get_refining_job(job_id: int, current_user: User = Depends(get_current_user)
 @router.post("/jobs/{job_id}/collect")
 def collect_refining_job(job_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """Récupère un job terminé et transfère au stock."""
+    from decimal import Decimal
+    
     job = db.query(RefiningJob).filter(RefiningJob.id == job_id, RefiningJob.user_id == current_user.id).first()
     if not job:
         raise HTTPException(status_code=404, detail="Job non trouvé")
@@ -257,13 +259,34 @@ def collect_refining_job(job_id: int, current_user: User = Depends(get_current_u
     
     # Transférer les matériaux vers l'inventaire
     for job_mat in job.materials:
-    # Chercher ou créer l'entrée d'inventaire
+        # Chercher ou créer l'entrée d'inventaire
         inventory = db.query(Inventory).filter(
-                Inventory.refinery_id == job.refinery_id,
-                Inventory.material_id == job_mat.material_id,
-                Inventory.user_id == job.user_id
-    ).first()
+            Inventory.refinery_id == job.refinery_id,
+            Inventory.material_id == job_mat.material_id,
+            Inventory.user_id == job.user_id
+        ).first()
+        
+        # Convertir quantité brute en SCU (÷ 100)
+        quantity_scu = Decimal(str(job_mat.quantity_refined)) / Decimal('100')
+        
+        if inventory:
+            inventory.add_quantity(quantity_scu)
+        else:
+            inventory = Inventory(
+                refinery_id=job.refinery_id,
+                material_id=job_mat.material_id,
+                user_id=job.user_id,
+                quantity=quantity_scu
+            )
+            db.add(inventory)
     
+    # Marquer le job comme collecté
+    job.status = "collected"
+    job.collected_at = datetime.utcnow()
+    
+    db.commit()
+    
+    return {"message": "Job collecté avec succès", "job_id": job_id}
     # Convertir quantité brute en SCU (÷ 100)
     from decimal import Decimal  # ← AJOUTER EN HAUT DU FICHIER (ligne ~10)
 
