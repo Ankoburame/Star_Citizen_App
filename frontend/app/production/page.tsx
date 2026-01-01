@@ -602,33 +602,38 @@ export default function ProductionPage() {
     if (!mounted) return;
 
     async function loadData() {
-      try {
-        const [processingRes, readyRes, invRes, salesRes, statsRes] = await Promise.all([
-          fetch(`${API_URL}/production/jobs?status=processing`),
-          fetch(`${API_URL}/production/jobs?status=ready`),
-          fetch(`${API_URL}/production/inventory`),
-          fetch(`${API_URL}/production/sales?limit=10`),
-          fetch(`${API_URL}/production/sales/stats`)
-        ]);
+  try {
+    const token = localStorage.getItem("token");
+    const headers = {
+      Authorization: `Bearer ${token}`
+    };
 
-        const processingJobs = await processingRes.json();
-        const readyJobs = await readyRes.json();
+    const [processingRes, readyRes, invRes, salesRes, statsRes] = await Promise.all([
+      fetch(`${API_URL}/production/jobs?status=processing`, { headers }),
+      fetch(`${API_URL}/production/jobs?status=ready`, { headers }),
+      fetch(`${API_URL}/production/inventory`, { headers }),
+      fetch(`${API_URL}/production/sales?limit=10`, { headers }),
+      fetch(`${API_URL}/production/sales/stats`, { headers })
+    ]);
 
-        console.log("📊 Processing jobs:", processingJobs.length);
-        console.log("🟢 Ready jobs:", readyJobs.length);
+    const processingJobs = await processingRes.json();
+    const readyJobs = await readyRes.json();
 
-        // Combiner les 2 listes
-        setJobs([...processingJobs, ...readyJobs]);
+    console.log("📊 Processing jobs:", processingJobs.length);
+    console.log("🟢 Ready jobs:", readyJobs.length);
 
-        setInventory(await invRes.json());
-        setSales(await salesRes.json());
-        setStats(await statsRes.json());
-        setLoading(false);
-      } catch (e) {
-        console.error("Error loading production data:", e);
-        setLoading(false);
-      }
-    }
+    // Combiner les 2 listes
+    setJobs([...processingJobs, ...readyJobs]);
+
+    setInventory(await invRes.json());
+    setSales(await salesRes.json());
+    setStats(await statsRes.json());
+    setLoading(false);
+  } catch (e) {
+    console.error("Error loading production data:", e);
+    setLoading(false);
+  }
+}
 
     loadData();
     const timer = setInterval(loadData, 5000);
@@ -636,30 +641,35 @@ export default function ProductionPage() {
   }, [mounted]);
 
   const refreshData = async () => {
-    try {
-      const [processingRes, readyRes, invRes, salesRes, statsRes] = await Promise.all([
-        fetch(`${API_URL}/production/jobs?status=processing`),
-        fetch(`${API_URL}/production/jobs?status=ready`),
-        fetch(`${API_URL}/production/inventory`),
-        fetch(`${API_URL}/production/sales?limit=10`),
-        fetch(`${API_URL}/production/sales/stats`)
-      ]);
+  try {
+    const token = localStorage.getItem("token");
+    const headers = {
+      Authorization: `Bearer ${token}`
+    };
 
-      const processingJobs = await processingRes.json();
-      const readyJobs = await readyRes.json();
+    const [processingRes, readyRes, invRes, salesRes, statsRes] = await Promise.all([
+      fetch(`${API_URL}/production/jobs?status=processing`, { headers }),
+      fetch(`${API_URL}/production/jobs?status=ready`, { headers }),
+      fetch(`${API_URL}/production/inventory`, { headers }),
+      fetch(`${API_URL}/production/sales?limit=10`, { headers }),
+      fetch(`${API_URL}/production/sales/stats`, { headers })
+    ]);
 
-      console.log("🔄 Refresh - Processing:", processingJobs.length, "Ready:", readyJobs.length);
+    const processingJobs = await processingRes.json();
+    const readyJobs = await readyRes.json();
 
-      // Combiner les 2 listes
-      setJobs([...processingJobs, ...readyJobs]);
+    console.log("🔄 Refresh - Processing:", processingJobs.length, "Ready:", readyJobs.length);
 
-      setInventory(await invRes.json());
-      setSales(await salesRes.json());
-      setStats(await statsRes.json());
-    } catch (e) {
-      console.error("Error refreshing data:", e);
-    }
-  };
+    // Combiner les 2 listes
+    setJobs([...processingJobs, ...readyJobs]);
+
+    setInventory(await invRes.json());
+    setSales(await salesRes.json());
+    setStats(await statsRes.json());
+  } catch (e) {
+    console.error("Error refreshing data:", e);
+  }
+};
 
   const handleCollect = async (jobId: number) => {
     try {

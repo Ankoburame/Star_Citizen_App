@@ -152,7 +152,11 @@ def get_refineries(
 # ============================================================
 
 @router.post("/jobs", response_model=RefiningJobSchema)
-def create_refining_job(job: RefiningJobCreate, db: Session = Depends(get_db)):
+def create_refining_job(
+    job: RefiningJobCreate, 
+    current_user: User = Depends(get_current_user),  # ✅ AJOUTER
+    db: Session = Depends(get_db)
+):
     """Crée un nouveau job de raffinerie."""
     
     # Vérifier que la raffinerie existe
@@ -170,9 +174,9 @@ def create_refining_job(job: RefiningJobCreate, db: Session = Depends(get_db)):
         total_cost=job.total_cost,
         processing_time=job.processing_time,
         end_time=end_time,
+        user_id=current_user.id,  # ✅ AJOUTER CETTE LIGNE
         notes=job.notes
     )
-    
     db.add(new_job)
     db.flush()  # Pour obtenir l'ID
     
