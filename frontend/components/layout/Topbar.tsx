@@ -1,7 +1,8 @@
 "use client";
 
-import { Menu, Wifi, Settings, User, Bell, Search } from "lucide-react";
+import { Menu, Wifi, Settings, User, Bell, Search, LogOut, Home } from "lucide-react";
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 
 type TopbarProps = {
   sidebarOpen: boolean;
@@ -9,22 +10,45 @@ type TopbarProps = {
 };
 
 export function Topbar({ sidebarOpen, toggleSidebar }: TopbarProps) {
-  // ✅ Initialiser à null pour éviter les problèmes de SSR
+  const router = useRouter();
   const [currentTime, setCurrentTime] = useState<Date | null>(null);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [user, setUser] = useState<any>(null);
 
-  // ✅ Utiliser useEffect au lieu de useState pour le timer
+  // Charger l'utilisateur depuis localStorage
   useEffect(() => {
-    // Initialiser l'heure côté client uniquement
+    const storedUser = localStorage.getItem("user");
+    if (storedUser) {
+      setUser(JSON.parse(storedUser));
+    }
+  }, []);
+
+  // Timer
+  useEffect(() => {
     setCurrentTime(new Date());
-    
-    // Démarrer le timer
     const timer = setInterval(() => {
       setCurrentTime(new Date());
     }, 1000);
-    
-    // Cleanup
     return () => clearInterval(timer);
   }, []);
+
+  const handleUserClick = () => {
+    if (!user) {
+      // Pas connecté → rediriger vers login
+      router.push("/login");
+    } else {
+      // Connecté → toggle menu
+      setUserMenuOpen(!userMenuOpen);
+    }
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    setUser(null);
+    setUserMenuOpen(false);
+    router.push("/login");
+  };
 
   return (
     <header
@@ -112,7 +136,7 @@ export function Topbar({ sidebarOpen, toggleSidebar }: TopbarProps) {
 
       {/* RIGHT SIDE */}
       <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
-        {/* Search (future feature) */}
+        {/* Search */}
         <button
           style={{
             width: "40px",
@@ -139,7 +163,7 @@ export function Topbar({ sidebarOpen, toggleSidebar }: TopbarProps) {
           <Search style={{ width: "18px", height: "18px" }} />
         </button>
 
-        {/* Notifications (future) */}
+        {/* Notifications */}
         <button
           style={{
             width: "40px",
@@ -165,7 +189,6 @@ export function Topbar({ sidebarOpen, toggleSidebar }: TopbarProps) {
           }}
         >
           <Bell style={{ width: "18px", height: "18px" }} />
-          {/* Notification badge (exemple) */}
           <div
             style={{
               position: "absolute",
@@ -189,7 +212,7 @@ export function Topbar({ sidebarOpen, toggleSidebar }: TopbarProps) {
           }}
         />
 
-        {/* Time Display - ✅ Afficher seulement si currentTime existe */}
+        {/* Time Display */}
         {currentTime && (
           <div
             style={{
@@ -225,7 +248,7 @@ export function Topbar({ sidebarOpen, toggleSidebar }: TopbarProps) {
           </div>
         )}
 
-        {/* API Status Indicator */}
+        {/* API Status */}
         <div
           style={{
             display: "flex",
@@ -279,21 +302,137 @@ export function Topbar({ sidebarOpen, toggleSidebar }: TopbarProps) {
           <Settings style={{ width: "18px", height: "18px" }} />
         </button>
 
-        {/* User Profile */}
-        <div
-          style={{
-            width: "40px",
-            height: "40px",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            background: "linear-gradient(135deg, #06b6d4 0%, #0891b2 100%)",
-            borderRadius: "8px",
-            cursor: "pointer",
-            boxShadow: "0 0 20px rgba(6, 182, 212, 0.3)",
-          }}
-        >
-          <User style={{ width: "20px", height: "20px", color: "white" }} />
+        {/* User Profile with Dropdown */}
+        <div style={{ position: "relative" }}>
+          <button
+            onClick={handleUserClick}
+            style={{
+              width: "40px",
+              height: "40px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              background: user 
+                ? "linear-gradient(135deg, #06b6d4 0%, #0891b2 100%)"
+                : "linear-gradient(135deg, #71717a 0%, #52525b 100%)",
+              borderRadius: "8px",
+              cursor: "pointer",
+              boxShadow: user 
+                ? "0 0 20px rgba(6, 182, 212, 0.3)"
+                : "0 0 10px rgba(113, 113, 122, 0.2)",
+              border: "none",
+              transition: "all 0.2s ease",
+            }}
+          >
+            <User style={{ width: "20px", height: "20px", color: "white" }} />
+          </button>
+
+          {/* Dropdown Menu */}
+          {userMenuOpen && user && (
+            <div
+              style={{
+                position: "absolute",
+                top: "calc(100% + 8px)",
+                right: 0,
+                width: "220px",
+                background: "linear-gradient(135deg, #0a0e1a 0%, #050810 100%)",
+                border: "1px solid rgba(6, 182, 212, 0.3)",
+                borderRadius: "8px",
+                boxShadow: "0 8px 24px rgba(0, 0, 0, 0.5)",
+                zIndex: 1000,
+                overflow: "hidden",
+              }}
+            >
+              {/* User Info */}
+              <div
+                style={{
+                  padding: "16px",
+                  borderBottom: "1px solid rgba(6, 182, 212, 0.2)",
+                }}
+              >
+                <div
+                  style={{
+                    fontSize: "14px",
+                    fontWeight: 700,
+                    color: "#06b6d4",
+                    marginBottom: "4px",
+                  }}
+                >
+                  {user.username}
+                </div>
+                <div
+                  style={{
+                    fontSize: "11px",
+                    color: "#52525b",
+                    textTransform: "uppercase",
+                    letterSpacing: "1px",
+                  }}
+                >
+                  {user.role}
+                </div>
+              </div>
+
+              {/* Menu Items */}
+              <button
+                onClick={() => {
+                  setUserMenuOpen(false);
+                  router.push("/");
+                }}
+                style={{
+                  width: "100%",
+                  padding: "12px 16px",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "12px",
+                  background: "transparent",
+                  border: "none",
+                  color: "#94a3b8",
+                  fontSize: "13px",
+                  cursor: "pointer",
+                  transition: "all 0.2s ease",
+                  textAlign: "left",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = "rgba(6, 182, 212, 0.1)";
+                  e.currentTarget.style.color = "#06b6d4";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = "transparent";
+                  e.currentTarget.style.color = "#94a3b8";
+                }}
+              >
+                <Home style={{ width: "16px", height: "16px" }} />
+                Dashboard
+              </button>
+
+              <button
+                onClick={handleLogout}
+                style={{
+                  width: "100%",
+                  padding: "12px 16px",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "12px",
+                  background: "transparent",
+                  border: "none",
+                  color: "#ef4444",
+                  fontSize: "13px",
+                  cursor: "pointer",
+                  transition: "all 0.2s ease",
+                  textAlign: "left",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = "rgba(239, 68, 68, 0.1)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = "transparent";
+                }}
+              >
+                <LogOut style={{ width: "16px", height: "16px" }} />
+                Logout
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </header>
