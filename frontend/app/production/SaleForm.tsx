@@ -238,6 +238,35 @@ export function SaleForm({ inventory, onSaleCompleted }: SaleFormProps) {
                 ))}
               </select>
             </div>
+            {/* 💡 REFERENCE - RECENT JOBS */}
+            {selectedItem && (
+              <div style={{
+                padding: '12px 16px',
+                background: `${COLORS.orange}15`,
+                border: `1px solid ${COLORS.orange}40`,
+                borderLeft: `3px solid ${COLORS.orange}`,
+                borderRadius: '2px'
+              }}>
+                <div style={{
+                  fontSize: '9px',
+                  color: COLORS.textSecondary,
+                  letterSpacing: '1.5px',
+                  textTransform: 'uppercase',
+                  marginBottom: '8px',
+                  fontFamily: 'monospace'
+                }}>
+                  💡 REFERENCE - DERNIERS JOBS {selectedItem.material_name.toUpperCase()}
+                </div>
+                <div style={{
+                  fontSize: '11px',
+                  color: COLORS.textSecondary,
+                  fontFamily: 'monospace',
+                  fontStyle: 'italic'
+                }}>
+                  (Calcule toi-même le coût total selon tes jobs)
+                </div>
+              </div>
+            )}
 
             {/* Quantity & Unit Price */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
