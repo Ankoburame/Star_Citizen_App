@@ -18,7 +18,7 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
 interface Material {
   id: number;
   name: string;
-  code: string;
+  code?: string;
   category: string;
   avg_sell_price: number | null;
   min_buy_price: number | null;
