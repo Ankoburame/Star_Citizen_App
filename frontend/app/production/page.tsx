@@ -5,7 +5,7 @@ import { Activity, Clock, Package, TrendingUp, AlertTriangle, CheckCircle, Loade
 import { NewJobForm } from "./NewJobForm";
 import { SaleForm } from "./SaleForm";
 import { InventoryFilters } from "./InventoryFilters";
-import { SalvageJobForm } from "./SalvageJobForm"; 
+import { SalvageJobForm } from "./SalvageJobForm";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
 
@@ -602,38 +602,42 @@ export default function ProductionPage() {
     if (!mounted) return;
 
     async function loadData() {
-  try {
-    const token = localStorage.getItem("token");
-    const headers = {
-      Authorization: `Bearer ${token}`
-    };
+      try {
+        const token = localStorage.getItem("token");
+        const headers = {
+          Authorization: `Bearer ${token}`
+        };
 
-    const [processingRes, readyRes, invRes, salesRes, statsRes] = await Promise.all([
-      fetch(`${API_URL}/production/jobs?status=processing`, { headers }),
-      fetch(`${API_URL}/production/jobs?status=ready`, { headers }),
-      fetch(`${API_URL}/production/inventory`, { headers }),
-      fetch(`${API_URL}/production/sales?limit=10`, { headers }),
-      fetch(`${API_URL}/production/sales/stats`, { headers })
-    ]);
+        const [processingRes, readyRes, invRes, salesRes, statsRes] = await Promise.all([
+          fetch(`${API_URL}/production/jobs?status=processing`, { headers }),
+          fetch(`${API_URL}/production/jobs?status=ready`, { headers }),
+          fetch(`${API_URL}/production/inventory`, { headers }),
+          fetch(`${API_URL}/production/sales?limit=10`, { headers }),
+          fetch(`${API_URL}/production/sales/stats`, { headers })
+        ]);
 
-    const processingJobs = await processingRes.json();
-    const readyJobs = await readyRes.json();
+        const processingJobs = await processingRes.json();
+        const readyJobs = await readyRes.json();
 
-    console.log("📊 Processing jobs:", processingJobs.length);
-    console.log("🟢 Ready jobs:", readyJobs.length);
+        // ✅ VÉRIFIER que ce sont des arrays
+        const validProcessing = Array.isArray(processingJobs) ? processingJobs : [];
+        const validReady = Array.isArray(readyJobs) ? readyJobs : [];
 
-    // Combiner les 2 listes
-    setJobs([...processingJobs, ...readyJobs]);
+        console.log("📊 Processing jobs:", validProcessing.length);
+        console.log("🟢 Ready jobs:", validReady.length);
 
-    setInventory(await invRes.json());
-    setSales(await salesRes.json());
-    setStats(await statsRes.json());
-    setLoading(false);
-  } catch (e) {
-    console.error("Error loading production data:", e);
-    setLoading(false);
-  }
-}
+        // Combiner les 2 listes
+        setJobs([...validProcessing, ...validReady]);
+
+        setInventory(await invRes.json());
+        setSales(await salesRes.json());
+        setStats(await statsRes.json());
+        setLoading(false);
+      } catch (e) {
+        console.error("Error loading production data:", e);
+        setLoading(false);
+      }
+    }
 
     loadData();
     const timer = setInterval(loadData, 5000);
@@ -641,35 +645,35 @@ export default function ProductionPage() {
   }, [mounted]);
 
   const refreshData = async () => {
-  try {
-    const token = localStorage.getItem("token");
-    const headers = {
-      Authorization: `Bearer ${token}`
-    };
+    try {
+      const token = localStorage.getItem("token");
+      const headers = {
+        Authorization: `Bearer ${token}`
+      };
 
-    const [processingRes, readyRes, invRes, salesRes, statsRes] = await Promise.all([
-      fetch(`${API_URL}/production/jobs?status=processing`, { headers }),
-      fetch(`${API_URL}/production/jobs?status=ready`, { headers }),
-      fetch(`${API_URL}/production/inventory`, { headers }),
-      fetch(`${API_URL}/production/sales?limit=10`, { headers }),
-      fetch(`${API_URL}/production/sales/stats`, { headers })
-    ]);
+      const [processingRes, readyRes, invRes, salesRes, statsRes] = await Promise.all([
+        fetch(`${API_URL}/production/jobs?status=processing`, { headers }),
+        fetch(`${API_URL}/production/jobs?status=ready`, { headers }),
+        fetch(`${API_URL}/production/inventory`, { headers }),
+        fetch(`${API_URL}/production/sales?limit=10`, { headers }),
+        fetch(`${API_URL}/production/sales/stats`, { headers })
+      ]);
 
-    const processingJobs = await processingRes.json();
-    const readyJobs = await readyRes.json();
+      const processingJobs = await processingRes.json();
+      const readyJobs = await readyRes.json();
 
-    console.log("🔄 Refresh - Processing:", processingJobs.length, "Ready:", readyJobs.length);
+      console.log("🔄 Refresh - Processing:", processingJobs.length, "Ready:", readyJobs.length);
 
-    // Combiner les 2 listes
-    setJobs([...processingJobs, ...readyJobs]);
+      // Combiner les 2 listes
+      setJobs([...processingJobs, ...readyJobs]);
 
-    setInventory(await invRes.json());
-    setSales(await salesRes.json());
-    setStats(await statsRes.json());
-  } catch (e) {
-    console.error("Error refreshing data:", e);
-  }
-};
+      setInventory(await invRes.json());
+      setSales(await salesRes.json());
+      setStats(await statsRes.json());
+    } catch (e) {
+      console.error("Error refreshing data:", e);
+    }
+  };
 
   const handleCollect = async (jobId: number) => {
     try {
@@ -700,7 +704,7 @@ export default function ProductionPage() {
       alert("Erreur lors de la collecte : " + e);
     }
   };
-  
+
   if (!mounted || loading) {
     return (
       <div style={{
@@ -892,7 +896,7 @@ export default function ProductionPage() {
           <div>
             {/* FORMULAIRE NOUVEAU JOB */}
             <NewJobForm onJobCreated={refreshData} />
-            <SalvageJobForm onJobCreated={refreshData} /> 
+            <SalvageJobForm onJobCreated={refreshData} />
 
             {/* SECTION 1: JOBS EN COURS */}
             <div style={{ marginBottom: '40px' }}>

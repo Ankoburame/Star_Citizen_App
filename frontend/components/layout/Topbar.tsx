@@ -1,6 +1,6 @@
 "use client";
 
-import { Menu, Wifi, Settings, User, Bell, Search, LogOut, Home, Lock } from "lucide-react";
+import { Menu, Wifi, Settings, User, Bell, Search, LogOut, Home, Lock, Shield } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 
@@ -16,7 +16,7 @@ export function Topbar({ sidebarOpen, toggleSidebar }: TopbarProps) {
   const [currentTime, setCurrentTime] = useState<Date | null>(null);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [user, setUser] = useState<any>(null);
-  
+
   // Password change modal states
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [oldPassword, setOldPassword] = useState("");
@@ -425,7 +425,40 @@ export function Topbar({ sidebarOpen, toggleSidebar }: TopbarProps) {
                   <Home style={{ width: "16px", height: "16px" }} />
                   Dashboard
                 </button>
-
+                {/* ✅ ADMIN PANEL (only for admins) */}
+                {user.role === 'admin' && (
+                  <button
+                    onClick={() => {
+                      setUserMenuOpen(false);
+                      router.push("/admin/users");
+                    }}
+                    style={{
+                      width: "100%",
+                      padding: "12px 16px",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "12px",
+                      background: "transparent",
+                      border: "none",
+                      color: "#94a3b8",
+                      fontSize: "13px",
+                      cursor: "pointer",
+                      transition: "all 0.2s ease",
+                      textAlign: "left",
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = "rgba(234, 179, 8, 0.1)";
+                      e.currentTarget.style.color = "#eab308";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = "transparent";
+                      e.currentTarget.style.color = "#94a3b8";
+                    }}
+                  >
+                    <Shield style={{ width: "16px", height: "16px" }} />
+                    Admin Panel
+                  </button>
+                )}
                 {/* ✅ BOUTON CHANGE PASSWORD */}
                 <button
                   onClick={() => {
