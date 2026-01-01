@@ -334,3 +334,46 @@ def get_history_stats(db: Session = Depends(get_db)):
         "last_snapshot": last,
         "days_coverage": days_coverage,
     }
+
+@router.post("/snapshot")
+def create_price_snapshot(db: Session = Depends(get_db)):
+    """
+    Crée un snapshot de tous les prix actuels dans l'historique.
+    
+    Copie les prix depuis market_prices vers price_history.
+    """
+    from models.market_price import MarketPrice
+    
+    now = datetime.utcnow()
+    snapshots_created = 0
+    
+    try:
+        # Récupérer tous les prix actuels
+        current_prices = db.query(MarketPrice).filter(
+            MarketPrice.sell_price.isnot(None)
+        ).all()
+        
+        for price in current_prices:
+            # Créer une entrée dans l'historique
+            snapshot = PriceHistory(
+                material_id=price.material_id,
+                location_id=price.location_id,
+                buy_price=price.buy_price,
+                sell_price=price.sell_price,
+                recorded_at=now,
+                source=price.source or "SNAPSHOT"
+            )
+            db.add(snapshot)
+            snapshots_created += 1
+        
+        db.commit()
+        
+        return {
+            "status": "success",
+            "snapshots_created": snapshots_created,
+            "timestamp": now
+        }
+        
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Snapshot failed: {str(e)}")
