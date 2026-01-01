@@ -11,7 +11,7 @@ if sys.platform == "win32":
     sys.stderr = codecs.getwriter("utf-8")(sys.stderr.buffer, 'strict')
 
 # Récupérer DATABASE_URL avec fallback
-DATABASE_URL = os.getenv("DATABASE_URL") or "postgresql://postgres:qsp1MhWM9S4QWHvaruNv@localhost:5432/starcitizen_prod?client_encoding=utf8"
+DATABASE_URL = os.getenv("DATABASE_URL")
 
 if not DATABASE_URL:
     raise ValueError("DATABASE_URL environment variable is not set!")
