@@ -588,6 +588,9 @@ export default function ProductionPage() {
   const [jobs, setJobs] = useState<RefiningJob[]>([]);
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [filteredInventory, setFilteredInventory] = useState<InventoryItem[]>([]);
+  useEffect(() => {
+    setFilteredInventory(inventory);
+  }, [inventory]);
   const [sales, setSales] = useState<Sale[]>([]);
   const [stats, setStats] = useState<SalesStats | null>(null);
   const [loading, setLoading] = useState(true);
@@ -1073,7 +1076,7 @@ export default function ProductionPage() {
                 {/* FILTRES */}
                 <InventoryFilters
                   inventory={inventory}
-                  onFilteredChange={(filtered: any) => setFilteredInventory(filtered as any)}
+                  onFilteredChange={setFilteredInventory}
                 />
 
                 {/* GRILLE INVENTAIRE */}
