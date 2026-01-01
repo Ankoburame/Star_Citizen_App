@@ -97,6 +97,7 @@ interface Sale {
   quantity_sold: number;
   unit_price: number;
   total_revenue: number;
+  refining_cost: number;
   profit: number;
   profit_percentage: number;
   sale_date: string;
@@ -1203,6 +1204,9 @@ export default function ProductionPage() {
                       <div style={{ textAlign: 'right' }}>
                         <div style={{ color: COLORS.greenOlive, fontWeight: 700 }}>
                           +{formatNumber(sale.total_revenue)} aUEC
+                        </div>
+                        <div style={{ color: COLORS.orange, fontSize: '10px', marginBottom: '2px' }}>
+                          Coût: {formatNumber(sale.refining_cost || 0)} aUEC
                         </div>
                         <div style={{ color: COLORS.greenOliveLight, fontSize: '10px' }}>
                           {sale.profit_percentage > 0 ? '+' : ''}{sale.profit_percentage.toFixed(1)}% profit
