@@ -14,7 +14,9 @@ from models.refining_job import RefiningJob, RefiningJobMaterial
 from models.inventory import Inventory
 from models.sale import Sale
 from models.material import Material
-from sqlalchemy import text  # ← AJOUTER EN HAUT DU FICHIER (ligne ~10)
+from sqlalchemy import text
+from api.auth import get_current_user
+from models.user import User
 
 router = APIRouter(prefix="/production", tags=["production"])
 
@@ -195,12 +197,13 @@ def get_refining_jobs(
     status: Optional[str] = Query(None, description="Filter by status"),
     refinery_id: Optional[int] = None,
     job_type: Optional[str] = None,
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """Liste les jobs de raffinerie."""
     query = db.query(RefiningJob).options(
         joinedload(RefiningJob.refinery),
-        joinedload(RefiningJob.materials).joinedload(RefiningJobMaterial.material)
+        joinedload(RefiningJob.materials).joinedload(RefiningJobMaterial.material).filter(RefiningJob.user_id == current_user.id)
     )
     
     if status:
@@ -225,9 +228,9 @@ def get_refining_jobs(
 
 
 @router.get("/jobs/{job_id}", response_model=RefiningJobSchema)
-def get_refining_job(job_id: int, db: Session = Depends(get_db)):
+def get_refining_job(job_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """Récupère un job spécifique."""
-    job = db.query(RefiningJob).filter(RefiningJob.id == job_id).first()
+    job = db.query(RefiningJob).filter(RefiningJob.id == job_id, RefiningJob.user_id == current_user.id).first()
     if not job:
         raise HTTPException(status_code=404, detail="Job non trouvé")
     
@@ -239,9 +242,9 @@ def get_refining_job(job_id: int, db: Session = Depends(get_db)):
 
 
 @router.post("/jobs/{job_id}/collect")
-def collect_refining_job(job_id: int, db: Session = Depends(get_db)):
+def collect_refining_job(job_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """Récupère un job terminé et transfère au stock."""
-    job = db.query(RefiningJob).filter(RefiningJob.id == job_id).first()
+    job = db.query(RefiningJob).filter(RefiningJob.id == job_id, RefiningJob.user_id == current_user.id).first()
     if not job:
         raise HTTPException(status_code=404, detail="Job non trouvé")
     
@@ -284,9 +287,9 @@ def collect_refining_job(job_id: int, db: Session = Depends(get_db)):
 
 
 @router.delete("/jobs/{job_id}")
-def cancel_refining_job(job_id: int, db: Session = Depends(get_db)):
+def cancel_refining_job(job_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """Annule un job de raffinerie."""
-    job = db.query(RefiningJob).filter(RefiningJob.id == job_id).first()
+    job = db.query(RefiningJob).filter(RefiningJob.id == job_id, RefiningJob.user_id == current_user.id).first()
     if not job:
         raise HTTPException(status_code=404, detail="Job non trouvé")
     
@@ -308,13 +311,14 @@ def get_inventory(
     refinery_id: Optional[int] = None,
     material_id: Optional[int] = None,
     min_quantity: float = 0,
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """Liste l'inventaire."""
     query = db.query(Inventory).options(
         joinedload(Inventory.refinery),
         joinedload(Inventory.material)
-    ).filter(Inventory.quantity > min_quantity)
+    ).filter(Inventory.quantity > min_quantity, Inventory.user_id == current_user.id)
     
     if refinery_id:
         query = query.filter(Inventory.refinery_id == refinery_id)
@@ -331,13 +335,14 @@ def get_inventory(
 # ============================================================
 
 @router.post("/sales", response_model=SaleSchema)
-def create_sale(sale: SaleCreate, db: Session = Depends(get_db)):
+def create_sale(sale: SaleCreate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """Enregistre une vente."""
     
     # Vérifier l'inventaire
     inventory = db.query(Inventory).filter(
         Inventory.refinery_id == sale.refinery_source_id,
-        Inventory.material_id == sale.material_id
+        Inventory.material_id == sale.material_id,
+        Inventory.user_id == current_user.id 
     ).first()
     
     if not inventory or inventory.quantity < sale.quantity_sold:
@@ -355,6 +360,7 @@ def create_sale(sale: SaleCreate, db: Session = Depends(get_db)):
         refining_cost=sale.refining_cost,
         sale_location_id=sale.sale_location_id,
         refinery_source_id=sale.refinery_source_id,
+        user_id=current_user.id,
         notes=sale.notes
     )
     
@@ -375,6 +381,7 @@ def get_sales(
     start_date: Optional[datetime] = None,
     end_date: Optional[datetime] = None,
     limit: int = 100,
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """Liste les ventes."""
@@ -382,7 +389,7 @@ def get_sales(
         joinedload(Sale.material),
         joinedload(Sale.sale_location),
         joinedload(Sale.refinery_source)
-    )
+    ).filter(Sale.user_id == current_user.id)
     
     if material_id:
         query = query.filter(Sale.material_id == material_id)
@@ -400,10 +407,11 @@ def get_sales(
 def get_sales_stats(
     start_date: Optional[datetime] = None,
     end_date: Optional[datetime] = None,
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """Statistiques globales des ventes."""
-    query = db.query(Sale)
+    query = db.query(Sale).filter(Sale.user_id == current_user.id)
     
     if start_date:
         query = query.filter(Sale.sale_date >= start_date)
