@@ -31,13 +31,13 @@ from pydantic import BaseModel, Field
 
 class LocationInfo(BaseModel):
     """Information de base sur une location."""
-    id: int
+    id: Optional[int] = None
     name: str
-    code: str
-    system: str
-    planet: str
-    location_type: str
-    full_path: str
+    code: Optional[str] = None
+    system: Optional[str] = None
+    planet: Optional[str] = None
+    location_type: Optional[str] = None
+    full_path: Optional[str] = None
     
     class Config:
         from_attributes = True
