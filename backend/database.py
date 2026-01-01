@@ -3,8 +3,15 @@ from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 
+# Force UTF-8 encoding
+import sys
+if sys.platform == "win32":
+    import codecs
+    sys.stdout = codecs.getwriter("utf-8")(sys.stdout.buffer, 'strict')
+    sys.stderr = codecs.getwriter("utf-8")(sys.stderr.buffer, 'strict')
+
 # Récupérer DATABASE_URL avec fallback
-DATABASE_URL = os.getenv("DATABASE_URL")
+DATABASE_URL = os.getenv("DATABASE_URL") or "postgresql://postgres:qsp1MhWM9S4QWHvaruNv@localhost:5432/starcitizen_prod?client_encoding=utf8"
 
 if not DATABASE_URL:
     raise ValueError("DATABASE_URL environment variable is not set!")
@@ -13,7 +20,12 @@ if not DATABASE_URL:
 if DATABASE_URL.startswith("postgres://"):
     DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
 
-engine = create_engine(DATABASE_URL)
+# Force connect_args pour UTF-8
+engine = create_engine(
+    DATABASE_URL,
+    connect_args={"client_encoding": "utf8"}
+)
+
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 Base = declarative_base()
