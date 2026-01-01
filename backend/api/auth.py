@@ -9,9 +9,9 @@ from typing import Optional
 
 from database import get_db
 from models.user import User
-from schemas.auth import UserCreate, UserLogin, UserResponse, Token
+from schemas.auth import UserCreate, UserLogin, UserResponse, Token, ChangePassword, ResetPassword
 from core.security import verify_password, get_password_hash, create_access_token, decode_access_token
-from schemas.auth import UserCreate, UserLogin, UserResponse, Token
+
 
 router = APIRouter()
 security = HTTPBearer()
