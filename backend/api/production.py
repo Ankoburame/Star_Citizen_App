@@ -252,9 +252,9 @@ def collect_refining_job(job_id: int, db: Session = Depends(get_db)):
     for job_mat in job.materials:
     # Chercher ou créer l'entrée d'inventaire
         inventory = db.query(Inventory).filter(
-        Inventory.refinery_id == job.refinery_id,
-        Inventory.material_id == job_mat.material_id,
-        Inventory.user_id == job.user_id
+                Inventory.refinery_id == job.refinery_id,
+                Inventory.material_id == job_mat.material_id,
+                Inventory.user_id == job.user_id
     ).first()
     
     # Convertir quantité brute en SCU (÷ 100)
