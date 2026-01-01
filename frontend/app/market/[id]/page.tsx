@@ -1,12 +1,12 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { 
-  TrendingUp, 
-  TrendingDown, 
-  Minus, 
-  MapPin, 
-  DollarSign, 
+import {
+  TrendingUp,
+  TrendingDown,
+  Minus,
+  MapPin,
+  DollarSign,
   ArrowLeft,
   Package,
   Activity
@@ -40,7 +40,7 @@ function generateMiniChartData(variation: number): number[] {
   const baseValue = 100;
   const points = 40;
   const data: number[] = [];
-  
+
   let current = baseValue;
   for (let i = 0; i < points; i++) {
     const noise = (Math.random() - 0.5) * 5;
@@ -48,7 +48,7 @@ function generateMiniChartData(variation: number): number[] {
     current = baseValue + trend + noise;
     data.push(current);
   }
-  
+
   return data;
 }
 
@@ -56,29 +56,34 @@ export default function MaterialDetailPage() {
   const router = useRouter();
   const params = useParams();
   const materialId = params.id;
-  
+
   const [material, setMaterial] = useState<Material | null>(null);
   const [loading, setLoading] = useState(true);
   const [variation] = useState((Math.random() - 0.5) * 10);
-  
+
   useEffect(() => {
     async function loadMaterial() {
       try {
         const res = await fetch(`${API_URL}/market/materials/${materialId}`);
         const data = await res.json();
-        setMaterial(data);
+
+        // Le backend retourne { material: {...}, prices: [...] }
+        // On a besoin juste de "material"
+        const materialData = data.material || data;
+
+        setMaterial(materialData);
         setLoading(false);
       } catch (e) {
         console.error("Error loading material:", e);
         setLoading(false);
       }
     }
-    
+
     if (materialId) {
       loadMaterial();
     }
   }, [materialId]);
-  
+
   if (loading) {
     return (
       <div style={{
@@ -114,7 +119,7 @@ export default function MaterialDetailPage() {
       </div>
     );
   }
-  
+
   if (!material) {
     return (
       <div style={{ padding: '32px', textAlign: 'center' }}>
@@ -136,9 +141,9 @@ export default function MaterialDetailPage() {
       </div>
     );
   }
-  
+
   const chartData = generateMiniChartData(variation);
-  
+
   return (
     <div style={{ padding: '32px', maxWidth: '1400px', margin: '0 auto' }}>
       {/* BOUTON RETOUR */}
@@ -172,7 +177,7 @@ export default function MaterialDetailPage() {
         <ArrowLeft style={{ width: '16px', height: '16px' }} />
         RETOUR AU MARCHÉ
       </button>
-      
+
       {/* HEADER */}
       <div style={{
         marginBottom: '40px',
@@ -216,24 +221,23 @@ export default function MaterialDetailPage() {
               CODE: {material.code}
             </div>
           </div>
-          
+
           <div style={{
             display: 'flex',
             alignItems: 'center',
             gap: '12px',
             padding: '20px 28px',
-            background: variation > 1 
-              ? 'rgba(16, 185, 129, 0.1)' 
-              : variation < -1 
-                ? 'rgba(239, 68, 68, 0.1)' 
+            background: variation > 1
+              ? 'rgba(16, 185, 129, 0.1)'
+              : variation < -1
+                ? 'rgba(239, 68, 68, 0.1)'
                 : 'rgba(113, 113, 122, 0.1)',
-            border: `2px solid ${
-              variation > 1 
-                ? '#10b981' 
-                : variation < -1 
-                  ? '#ef4444' 
+            border: `2px solid ${variation > 1
+                ? '#10b981'
+                : variation < -1
+                  ? '#ef4444'
                   : '#71717a'
-            }`,
+              }`,
             borderRadius: '8px'
           }}>
             {variation > 1 ? (
@@ -246,10 +250,10 @@ export default function MaterialDetailPage() {
             <div style={{
               fontSize: '36px',
               fontWeight: 700,
-              color: variation > 1 
-                ? '#10b981' 
-                : variation < -1 
-                  ? '#ef4444' 
+              color: variation > 1
+                ? '#10b981'
+                : variation < -1
+                  ? '#ef4444'
                   : '#71717a',
               fontFamily: 'monospace'
             }}>
@@ -258,7 +262,7 @@ export default function MaterialDetailPage() {
           </div>
         </div>
       </div>
-      
+
       {/* GRAPHIQUE */}
       <div style={{
         background: 'rgba(0, 0, 0, 0.4)',
@@ -271,17 +275,17 @@ export default function MaterialDetailPage() {
         <svg width="100%" height="250" style={{ display: 'block' }}>
           <defs>
             <linearGradient id="chartGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-              <stop offset="0%" style={{ 
-                stopColor: variation > 1 ? '#10b981' : variation < -1 ? '#ef4444' : '#06b6d4', 
-                stopOpacity: 0.4 
+              <stop offset="0%" style={{
+                stopColor: variation > 1 ? '#10b981' : variation < -1 ? '#ef4444' : '#06b6d4',
+                stopOpacity: 0.4
               }} />
-              <stop offset="100%" style={{ 
-                stopColor: variation > 1 ? '#10b981' : variation < -1 ? '#ef4444' : '#06b6d4', 
-                stopOpacity: 0 
+              <stop offset="100%" style={{
+                stopColor: variation > 1 ? '#10b981' : variation < -1 ? '#ef4444' : '#06b6d4',
+                stopOpacity: 0
               }} />
             </linearGradient>
           </defs>
-          
+
           {[0, 1, 2, 3, 4, 5].map(i => (
             <line
               key={i}
@@ -294,28 +298,28 @@ export default function MaterialDetailPage() {
               strokeDasharray="4 4"
             />
           ))}
-          
+
           {(() => {
             const max = Math.max(...chartData);
             const min = Math.min(...chartData);
             const range = max - min || 1;
             const width = 1200;
-            
+
             const points = chartData.map((value, i) => {
               const x = (i / (chartData.length - 1)) * width;
               const y = 250 - ((value - min) / range) * 230;
               return `${x},${y}`;
             }).join(" ");
-            
+
             const color = variation > 1 ? '#10b981' : variation < -1 ? '#ef4444' : '#06b6d4';
-            
+
             return (
               <>
                 <path
                   d={`M 0,250 L ${points} L ${width},250 Z`}
                   fill="url(#chartGradient)"
                 />
-                
+
                 <polyline
                   points={points}
                   fill="none"
@@ -328,7 +332,7 @@ export default function MaterialDetailPage() {
           })()}
         </svg>
       </div>
-      
+
       {/* PRIX */}
       <div style={{
         display: 'grid',
@@ -360,7 +364,7 @@ export default function MaterialDetailPage() {
               MEILLEUR PRIX D'ACHAT
             </div>
           </div>
-          
+
           {material.min_buy_price ? (
             <>
               <div style={{
@@ -376,7 +380,7 @@ export default function MaterialDetailPage() {
                   aUEC
                 </span>
               </div>
-              
+
               {material.best_buy_location && (
                 <div style={{
                   display: 'flex',
@@ -409,7 +413,7 @@ export default function MaterialDetailPage() {
             </div>
           )}
         </div>
-        
+
         {/* VENTE */}
         <div style={{
           background: 'rgba(16, 185, 129, 0.05)',
@@ -435,7 +439,7 @@ export default function MaterialDetailPage() {
               MEILLEUR PRIX DE VENTE
             </div>
           </div>
-          
+
           {material.max_sell_price ? (
             <>
               <div style={{
@@ -451,7 +455,7 @@ export default function MaterialDetailPage() {
                   aUEC
                 </span>
               </div>
-              
+
               {material.best_sell_location && (
                 <div style={{
                   display: 'flex',
@@ -485,7 +489,7 @@ export default function MaterialDetailPage() {
           )}
         </div>
       </div>
-      
+
       {/* STATS */}
       <div style={{
         marginTop: '40px',
@@ -521,7 +525,7 @@ export default function MaterialDetailPage() {
             </span>
           </div>
         </div>
-        
+
         <div style={{
           padding: '20px',
           background: 'rgba(6, 182, 212, 0.05)',
@@ -554,7 +558,7 @@ export default function MaterialDetailPage() {
             </span>
           </div>
         </div>
-        
+
         <div style={{
           padding: '20px',
           background: 'rgba(6, 182, 212, 0.05)',
@@ -574,8 +578,8 @@ export default function MaterialDetailPage() {
           <div style={{
             fontSize: '28px',
             fontWeight: 700,
-            color: material.max_sell_price && material.min_buy_price 
-              ? '#10b981' 
+            color: material.max_sell_price && material.min_buy_price
+              ? '#10b981'
               : '#52525b',
             fontFamily: 'monospace'
           }}>
