@@ -9,7 +9,10 @@ class MarketPrice(Base):
 
     id = Column(Integer, primary_key=True)
     material_id = Column(Integer, ForeignKey("materials.id"), nullable=False)
-    location_id = Column(Integer, ForeignKey("locations.id"), nullable=False)
+    
+    # DEUX colonnes pour gérer les deux cas
+    location_id = Column(Integer, ForeignKey("locations.id"), nullable=True)  # Vraies locations
+    location_string = Column(String(100), nullable=True)  # "UEX_ESTIMATED", etc.
 
     sell_price = Column(Float, nullable=True)
     buy_price = Column(Float, nullable=True)
@@ -18,16 +21,6 @@ class MarketPrice(Base):
     collected_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, onupdate=func.now())
     
-    # ✅ AJOUTEZ CETTE LIGNE
+    # Relations
     material = relationship("Material", back_populates="market_prices")
     location_obj = relationship("Location", back_populates="market_prices")
-
-    @property
-    def location(self):
-        """Alias pour location_obj (compatibilité)."""
-        return self.location_obj
-    
-    @location.setter
-    def location(self, value):
-        """Setter pour location (compatibilité)."""
-        self.location_obj = value
