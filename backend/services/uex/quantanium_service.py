@@ -42,7 +42,7 @@ def is_quantanium_cache_valid(db: Session) -> bool:
         db.query(MarketPrice)
         .filter(
             MarketPrice.source == "UEX",
-            MarketPrice.location == UEX_LOCATION,
+            MarketPrice.location_string == UEX_LOCATION,
         )
         .order_by(desc(MarketPrice.collected_at))
         .first()

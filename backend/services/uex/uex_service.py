@@ -41,7 +41,7 @@ def is_cache_valid(db: Session, material_id: Optional[int] = None) -> bool:
     
     query = db.query(MarketPrice).filter(
         MarketPrice.source == "UEX",
-        MarketPrice.location == UEX_LOCATION,
+        MarketPrice.location_string == UEX_LOCATION,
     )
     
     if material_id:
