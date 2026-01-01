@@ -52,11 +52,11 @@ export function NewJobForm({ onJobCreated }: NewJobFormProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  
+
   // Data from API
   const [refineries, setRefineries] = useState<Refinery[]>([]);
   const [materials, setMaterials] = useState<Material[]>([]);
-  
+
   // Form state
   const [refineryId, setRefineryId] = useState<number>(0);
   const [materialLines, setMaterialLines] = useState<MaterialLine[]>([
@@ -76,18 +76,18 @@ export function NewJobForm({ onJobCreated }: NewJobFormProps) {
           fetch(`${API_URL}/production/refineries`),
           fetch(`${API_URL}/market/materials`)
         ]);
-        
+
         const refData = await refRes.json();
         const matData = await matRes.json();
 
-// FILTRE: Exclure les matériaux "Raw" (non raffinables)
-const refinableMaterials = matData.filter((mat: Material) => 
-  !mat.name.includes('(Raw)') && !mat.name.endsWith('Raw')
-);
+        // FILTRE: Exclure les matériaux "Raw" (non raffinables)
+        const refinableMaterials = matData.filter((mat: Material) =>
+          !mat.name.includes('(Raw)') && !mat.name.endsWith('Raw')
+        );
 
-setRefineries(refData);
-setMaterials(refinableMaterials);  // ← Liste filtrée
-        
+        setRefineries(refData);
+        setMaterials(refinableMaterials);  // ← Liste filtrée
+
         // Set default refinery
         if (refData.length > 0) {
           setRefineryId(refData[0].id);
@@ -97,7 +97,7 @@ setMaterials(refinableMaterials);  // ← Liste filtrée
       }
       setLoading(false);
     }
-    
+
     if (isOpen && refineries.length === 0) {
       loadData();
     }
@@ -117,7 +117,7 @@ setMaterials(refinableMaterials);  // ← Liste filtrée
   };
 
   const updateMaterialLine = (id: string, field: 'material_id' | 'quantity', value: number) => {
-    setMaterialLines(materialLines.map(line => 
+    setMaterialLines(materialLines.map(line =>
       line.id === id ? { ...line, [field]: value } : line
     ));
   };
@@ -128,13 +128,13 @@ setMaterials(refinableMaterials);  // ← Liste filtrée
       alert("Please select a refinery");
       return;
     }
-    
+
     const validMaterials = materialLines.filter(line => line.material_id > 0 && line.quantity > 0);
     if (validMaterials.length === 0) {
       alert("Please add at least one material with quantity");
       return;
     }
-    
+
     const totalMinutes = (hoursTime * 60) + minutesTime;
     if (totalMinutes <= 0) {
       alert("Please set processing time");
@@ -142,7 +142,7 @@ setMaterials(refinableMaterials);  // ← Liste filtrée
     }
 
     setSubmitting(true);
-    
+
     try {
       const payload = {
         refinery_id: refineryId,
@@ -156,10 +156,15 @@ setMaterials(refinableMaterials);  // ← Liste filtrée
         }))
       };
 
+      const token = localStorage.getItem("token");
+
       const response = await fetch(`${API_URL}/production/jobs`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,  // ✅ AJOUTER
+        },
+        body: JSON.stringify(payload),
       });
 
       if (!response.ok) {
@@ -173,15 +178,15 @@ setMaterials(refinableMaterials);  // ← Liste filtrée
       setMinutesTime(0);
       setNotes("");
       setIsOpen(false);
-      
+
       // Callback
       onJobCreated();
-      
+
     } catch (e) {
       console.error("Error creating job:", e);
       alert("Failed to create refining job. Check console for details.");
     }
-    
+
     setSubmitting(false);
   };
 
@@ -196,7 +201,7 @@ setMaterials(refinableMaterials);  // ← Liste filtrée
         style={{
           width: '100%',
           padding: '16px 24px',
-          background: isOpen 
+          background: isOpen
             ? `linear-gradient(135deg, ${COLORS.orange}30 0%, ${COLORS.orange}20 100%)`
             : `linear-gradient(135deg, ${COLORS.bgMedium}f5 0%, ${COLORS.bgDark}f5 100%)`,
           border: `1px solid ${isOpen ? COLORS.orange : COLORS.bgLight}`,
@@ -300,7 +305,7 @@ setMaterials(refinableMaterials);  // ← Liste filtrée
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-              
+
               {/* Refinery Selection */}
               <div>
                 <label style={{
@@ -358,11 +363,11 @@ setMaterials(refinableMaterials);  // ← Liste filtrée
                     fontFamily: 'monospace',
                     marginBottom: '8px',
                     fontStyle: 'italic'
-                    }}>
+                  }}>
                     Note: Quantities are automatically converted to SCU (÷100) when collected
-                    </div>
+                  </div>
                 </label>
-                
+
                 <div style={{
                   background: `${COLORS.bgDark}80`,
                   border: `1px solid ${COLORS.bgLight}`,
@@ -635,7 +640,7 @@ setMaterials(refinableMaterials);  // ← Liste filtrée
                   marginTop: '8px',
                   width: '100%',
                   padding: '16px',
-                  background: submitting 
+                  background: submitting
                     ? COLORS.bgLight
                     : `linear-gradient(135deg, ${COLORS.yellow} 0%, ${COLORS.yellowLight} 100%)`,
                   border: `1px solid ${submitting ? COLORS.bgLight : COLORS.yellow}`,
