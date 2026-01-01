@@ -65,7 +65,7 @@ export function Topbar({ sidebarOpen, toggleSidebar }: TopbarProps) {
     localStorage.removeItem("user");
     setUser(null);
     setUserMenuOpen(false);
-    router.push("/login");
+    router.push("/");
   };
 
   const handleChangePassword = async (e: React.FormEvent) => {

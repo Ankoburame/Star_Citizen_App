@@ -2,11 +2,11 @@
 
 import CargoRunsTracker from "./CargoRunsTracker";
 import React, { useState, useEffect } from "react";
-import { 
-  TrendingUp, 
-  Package, 
-  DollarSign, 
-  ArrowRight, 
+import {
+  TrendingUp,
+  Package,
+  DollarSign,
+  ArrowRight,
   Calculator,
   Truck,
   BarChart3,
@@ -19,6 +19,7 @@ import {
   CheckCircle,
   XCircle
 } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 // ============================================================
 // COULEURS COMMERCE (Cyan électrique Star Citizen)
@@ -179,7 +180,7 @@ function TradeCalculator() {
       const res = await fetch(`${API_URL}/market/materials`);
       const data = await res.json();
 
-      setCommodities(data.filter((c: Commodity) => 
+      setCommodities(data.filter((c: Commodity) =>
         !c.name.includes('(Raw)') && !c.name.includes('(Ore)')
       ));
       setLoading(false);
@@ -865,8 +866,17 @@ function TradeStats() {
 // ============================================================
 
 export default function CommercePage() {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<"calculator" | "runs" | "stats">("calculator");
   const [mounted, setMounted] = useState(false);
+
+  // ✅ PROTECTION AUTH
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      router.push("/login");
+    }
+  }, [router]);
 
   useEffect(() => {
     setMounted(true);

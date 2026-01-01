@@ -6,6 +6,7 @@ import { NewJobForm } from "./NewJobForm";
 import { SaleForm } from "./SaleForm";
 import { InventoryFilters } from "./InventoryFilters";
 import { SalvageJobForm } from "./SalvageJobForm";
+import { useRouter } from "next/navigation";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
 
@@ -583,19 +584,32 @@ function InventoryCard({ item }: { item: InventoryItem }) {
 // ============================================================
 // MAIN COMPONENT (avec couleurs CIG)
 // ============================================================
-
 export default function ProductionPage() {
+  const router = useRouter();
   const [jobs, setJobs] = useState<RefiningJob[]>([]);
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [filteredInventory, setFilteredInventory] = useState<InventoryItem[]>([]);
-  useEffect(() => {
-    setFilteredInventory(inventory);
-  }, [inventory]);
   const [sales, setSales] = useState<Sale[]>([]);
   const [stats, setStats] = useState<SalesStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [mounted, setMounted] = useState(false);
   const [activeTab, setActiveTab] = useState<"jobs" | "inventory" | "sales">("jobs");
+
+  // ✅ PROTECTION AUTH
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      router.push("/login");
+    }
+  }, [router]);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    setFilteredInventory(inventory);
+  }, [inventory]);
 
   useEffect(() => {
     setMounted(true);
