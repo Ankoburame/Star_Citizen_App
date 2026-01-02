@@ -83,27 +83,31 @@ export function SaleForm({ inventory, onSaleCompleted }: SaleFormProps) {
   };
 
   const confirmSale = async () => {
-  setSubmitting(true);
+    setSubmitting(true);
 
-  try {
-    const token = localStorage.getItem("token");  // ✅ AJOUTER
-    
-    const payload = {
-      inventory_id: selectedInventoryId,
-      quantity_sold: quantity,
-      unit_price: unitPrice,
-      sale_location: saleLocation || null,
-      refining_cost: refiningCost || 0
-    };
+    try {
+      const token = localStorage.getItem("token");  // ✅ AJOUTER
 
-    const response = await fetch(`${API_URL}/production/sales`, {
-      method: 'POST',
-      headers: { 
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`  // ✅ AJOUTER
-      },
-      body: JSON.stringify(payload)
-    });
+      const selectedItem = inventory.find(item => item.id === selectedInventoryId);
+
+      const payload = {
+        material_id: selectedItem!.material_id,       // ✅ FIX
+        refinery_source_id: selectedItem!.refinery_id, // ✅ FIX
+        quantity_sold: quantity,
+        unit_price: unitPrice,
+        sale_location_id: null,  // ✅ FIX (ou retire complètement cette ligne)
+        refining_cost: refiningCost || 0,
+        notes: saleLocation || null  // ✅ Mettre la location en notes
+      };
+
+      const response = await fetch(`${API_URL}/production/sales`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`  // ✅ AJOUTER
+        },
+        body: JSON.stringify(payload)
+      });
 
       if (!response.ok) {
         const error = await response.json();
@@ -147,7 +151,7 @@ export function SaleForm({ inventory, onSaleCompleted }: SaleFormProps) {
         style={{
           width: '100%',
           padding: '16px 24px',
-          background: isOpen 
+          background: isOpen
             ? `linear-gradient(135deg, ${COLORS.greenOlive}30 0%, ${COLORS.greenOlive}20 100%)`
             : `linear-gradient(135deg, ${COLORS.bgMedium}f5 0%, ${COLORS.bgDark}f5 100%)`,
           border: `1px solid ${isOpen ? COLORS.greenOlive : COLORS.bgLight}`,
@@ -203,7 +207,7 @@ export function SaleForm({ inventory, onSaleCompleted }: SaleFormProps) {
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-            
+
             {/* Material Selection */}
             <div>
               <label style={{
@@ -697,8 +701,8 @@ export function SaleForm({ inventory, onSaleCompleted }: SaleFormProps) {
                 style={{
                   flex: 1,
                   padding: '14px',
-                  background: submitting 
-                    ? COLORS.bgLight 
+                  background: submitting
+                    ? COLORS.bgLight
                     : `linear-gradient(135deg, ${COLORS.greenOlive} 0%, ${COLORS.greenOliveLight} 100%)`,
                   border: `1px solid ${submitting ? COLORS.bgLight : COLORS.greenOlive}`,
                   borderRadius: '2px',
