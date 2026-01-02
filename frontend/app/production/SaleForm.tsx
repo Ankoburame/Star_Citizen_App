@@ -83,22 +83,27 @@ export function SaleForm({ inventory, onSaleCompleted }: SaleFormProps) {
   };
 
   const confirmSale = async () => {
-    setSubmitting(true);
+  setSubmitting(true);
 
-    try {
-      const payload = {
-        inventory_id: selectedInventoryId,
-        quantity_sold: quantity,
-        unit_price: unitPrice,
-        sale_location: saleLocation || null,
-        refining_cost: refiningCost || 0
-      };
+  try {
+    const token = localStorage.getItem("token");  // ✅ AJOUTER
+    
+    const payload = {
+      inventory_id: selectedInventoryId,
+      quantity_sold: quantity,
+      unit_price: unitPrice,
+      sale_location: saleLocation || null,
+      refining_cost: refiningCost || 0
+    };
 
-      const response = await fetch(`${API_URL}/production/sales`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
+    const response = await fetch(`${API_URL}/production/sales`, {
+      method: 'POST',
+      headers: { 
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`  // ✅ AJOUTER
+      },
+      body: JSON.stringify(payload)
+    });
 
       if (!response.ok) {
         const error = await response.json();
