@@ -5,6 +5,7 @@ Model pour l'inventaire (Inventory/Stack).
 from sqlalchemy import Column, Integer, String, Numeric, DateTime, ForeignKey, UniqueConstraint
 from sqlalchemy.orm import relationship
 from datetime import datetime
+from decimal import Decimal
 
 from database import Base
 
@@ -49,10 +50,9 @@ class Inventory(Base):
         self.quantity += amount
         self.last_updated = datetime.utcnow()
     
-    def remove_quantity(self, amount: float) -> bool:
-        """Retire une quantité de l'inventaire. Retourne True si succès."""
-        if self.quantity >= amount:
-            self.quantity -= amount
+    def remove_quantity(self, amount):
+        if self.quantity >= Decimal(str(amount)):
+            self.quantity -= Decimal(str(amount))
             self.last_updated = datetime.utcnow()
             return True
         return False
