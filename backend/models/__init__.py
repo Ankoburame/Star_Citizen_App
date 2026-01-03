@@ -27,7 +27,7 @@ from models.trade_run import TradeRun
 from models.scan_signature import ScanSignature
 from models.refinery_bonus import RefineryBonus
 from models.refining_method import RefiningMethod
-
+from models.history_event import HistoryEvent
 # Export all models for easy import
 __all__ = [
     "Base",
@@ -53,4 +53,5 @@ __all__ = [
     "ScanSignature",
     "RefineryBonus",
     "RefiningMethod",
+    "HistoryEvent",
 ]
