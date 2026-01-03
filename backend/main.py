@@ -20,7 +20,7 @@ from api.materials import router as materials_router
 from api.pricing import router as pricing_router
 from api.trade import router as trade_router
 from api.ws_dashboard import router as ws_dashboard_router
-from routes import reference, auth, history
+from routes import reference, history
 
 
 @asynccontextmanager
