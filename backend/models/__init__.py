@@ -24,6 +24,9 @@ from models.session import Session
 from models.stock_event import StockEvent
 from models.stock import Stock
 from models.trade_run import TradeRun
+from models.scan_signature import ScanSignature
+from models.refinery_bonus import RefineryBonus
+from models.refining_method import RefiningMethod
 
 # Export all models for easy import
 __all__ = [
@@ -47,4 +50,7 @@ __all__ = [
     "Stock",
     "TradeRun",
     "CargoRun",
+    "ScanSignature",
+    "RefineryBonus",
+    "RefiningMethod",
 ]

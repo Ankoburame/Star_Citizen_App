@@ -24,6 +24,7 @@ from api import market, price_history, production
 from api import production, market, commerce
 from api import auth
 from models.user import User
+from routers import reference
 
 
 @asynccontextmanager
@@ -97,6 +98,7 @@ app.include_router(price_history.router)
 app.include_router(production.router) 
 app.include_router(commerce.router)
 app.include_router(auth.router, prefix="/auth", tags=["Authentication"])
+app.include_router(reference.router)
 
 # ============================================================================
 # WEBSOCKET ROUTES
