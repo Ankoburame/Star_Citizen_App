@@ -2,12 +2,12 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import Image from "next/image";
 import {
   LayoutDashboard,
   Factory,
   ShoppingCart,
   TrendingUp,
-  Zap,
   Circle,
 } from "lucide-react";
 
@@ -64,30 +64,35 @@ export function Sidebar({ open }: SidebarProps) {
       >
         {open ? (
           <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+            {/* Logo OVG avec cristal */}
             <div
               style={{
                 width: "40px",
                 height: "40px",
-                background: "linear-gradient(135deg, #06b6d4 0%, #0891b2 100%)",
-                borderRadius: "8px",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                boxShadow: "0 0 20px rgba(6, 182, 212, 0.4)",
+                filter: "drop-shadow(0 0 20px rgba(6, 182, 212, 0.6))",
               }}
             >
-              <Zap style={{ width: "24px", height: "24px", color: "white" }} />
+              <Image
+                src="/images/logo/ovg_icon_only.svg"
+                alt="OVG Logo"
+                width={40}
+                height={40}
+                priority
+              />
             </div>
             <div>
               <div
                 style={{
                   fontSize: "16px",
                   fontWeight: 700,
-                  color: "white",
+                  color: "#22d3ee",
                   letterSpacing: "2px",
                 }}
               >
-                STAR CITIZEN
+                OBSIDIAN
               </div>
               <div
                 style={{
@@ -96,7 +101,7 @@ export function Sidebar({ open }: SidebarProps) {
                   letterSpacing: "1px",
                 }}
               >
-                RESOURCE MANAGER
+                VENTURES GROUP
               </div>
             </div>
           </div>
@@ -105,16 +110,20 @@ export function Sidebar({ open }: SidebarProps) {
             style={{
               width: "40px",
               height: "40px",
-              background: "linear-gradient(135deg, #06b6d4 0%, #0891b2 100%)",
-              borderRadius: "8px",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              boxShadow: "0 0 20px rgba(6, 182, 212, 0.4)",
               margin: "0 auto",
+              filter: "drop-shadow(0 0 20px rgba(6, 182, 212, 0.6))",
             }}
           >
-            <Zap style={{ width: "24px", height: "24px", color: "white" }} />
+            <Image
+              src="/images/logo/ovg_icon_only.svg"
+              alt="OVG"
+              width={40}
+              height={40}
+              priority
+            />
           </div>
         )}
       </div>

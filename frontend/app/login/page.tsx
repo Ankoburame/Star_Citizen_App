@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { User, Lock, LogIn } from "lucide-react";
 
 const COLORS = {
@@ -14,10 +15,10 @@ const COLORS = {
   bgLight: "#334155",
   textPrimary: "#e2e8f0",
   textSecondary: "#94a3b8",
+  cyan: "#22d3ee",
 };
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
-console.log("🔍 API_URL:", API_URL);
 
 export default function LoginPage() {
   const router = useRouter();
@@ -49,7 +50,7 @@ export default function LoginPage() {
       localStorage.setItem("token", data.access_token);
       localStorage.setItem("user", JSON.stringify(data.user));
 
-      // Déclencher événement de login ✅
+      // Déclencher événement de login
       window.dispatchEvent(new Event("user-login"));
 
       // Rediriger vers le dashboard
@@ -69,54 +70,94 @@ export default function LoginPage() {
       display: "flex",
       alignItems: "center",
       justifyContent: "center",
-      padding: "20px"
+      padding: "20px",
+      position: "relative",
+      overflow: "hidden",
     }}>
+      {/* Background effects */}
+      <div style={{
+        position: "absolute",
+        top: "50%",
+        left: "50%",
+        transform: "translate(-50%, -50%)",
+        width: "600px",
+        height: "600px",
+        background: "radial-gradient(circle, rgba(6, 182, 212, 0.1) 0%, transparent 70%)",
+        pointerEvents: "none",
+      }} />
+
       <div style={{
         width: "100%",
-        maxWidth: "400px",
+        maxWidth: "450px",
         background: `linear-gradient(135deg, ${COLORS.bgMedium} 0%, ${COLORS.bgDark} 100%)`,
-        border: `1px solid ${COLORS.orange}60`,
-        borderRadius: "4px",
-        padding: "40px",
-        clipPath: "polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 12px 100%, 0 calc(100% - 12px))",
-        boxShadow: `0 0 30px ${COLORS.orange}30`
+        border: `1px solid ${COLORS.cyan}60`,
+        borderRadius: "8px",
+        padding: "48px",
+        boxShadow: `0 0 40px ${COLORS.cyan}30`,
+        position: "relative",
+        zIndex: 1,
       }}>
-        {/* Header */}
+        {/* Header avec Logo OVG */}
         <div style={{
           textAlign: "center",
-          marginBottom: "40px"
+          marginBottom: "48px"
         }}>
+          {/* Logo OVG */}
           <div style={{
-            fontSize: "11px",
-            color: COLORS.red,
-            letterSpacing: "2px",
-            textTransform: "uppercase",
-            fontWeight: 700,
-            marginBottom: "12px",
-            fontFamily: "monospace"
+            display: "flex",
+            justifyContent: "center",
+            marginBottom: "24px",
+            filter: "drop-shadow(0 0 30px rgba(6, 182, 212, 0.6))",
           }}>
-            // AUTHENTICATION SYSTEM
+            <Image
+              src="/images/logo/ovg_logo_main.svg"
+              alt="Obsidian Ventures Group"
+              width={120}
+              height={120}
+              priority
+            />
           </div>
+
+          {/* Nom de la corpo */}
           <h1 style={{
-            fontSize: "32px",
+            fontSize: "28px",
             fontWeight: 700,
-            color: COLORS.textPrimary,
-            letterSpacing: "2px",
+            color: COLORS.cyan,
+            letterSpacing: "3px",
             textTransform: "uppercase",
-            margin: 0,
-            fontFamily: "monospace",
-            textShadow: `0 0 15px ${COLORS.orange}40`
+            margin: "0 0 8px 0",
+            textShadow: `0 0 20px ${COLORS.cyan}60`,
           }}>
-            STAR CITIZEN
+            OBSIDIAN
           </h1>
           <div style={{
-            fontSize: "14px",
+            fontSize: "16px",
             color: COLORS.textSecondary,
-            marginTop: "8px",
-            fontFamily: "monospace"
+            letterSpacing: "2px",
+            marginBottom: "12px",
           }}>
-            ECONOMY TOOL
+            VENTURES GROUP
           </div>
+
+          {/* Tagline */}
+          <div style={{
+            fontSize: "12px",
+            color: COLORS.cyan,
+            letterSpacing: "2px",
+            fontStyle: "italic",
+            opacity: 0.8,
+          }}>
+            Precision. Power. Profit.
+          </div>
+
+          {/* Separator */}
+          <div style={{
+            width: "80px",
+            height: "1px",
+            background: `linear-gradient(90deg, transparent 0%, ${COLORS.cyan} 50%, transparent 100%)`,
+            margin: "24px auto 0",
+            opacity: 0.5,
+          }} />
         </div>
 
         {/* Error Message */}
@@ -125,7 +166,7 @@ export default function LoginPage() {
             padding: "12px",
             background: `${COLORS.red}20`,
             border: `1px solid ${COLORS.red}`,
-            borderRadius: "2px",
+            borderRadius: "4px",
             color: COLORS.red,
             fontSize: "12px",
             marginBottom: "24px",
@@ -141,7 +182,7 @@ export default function LoginPage() {
           <div style={{ marginBottom: "24px" }}>
             <label style={{
               display: "block",
-              fontSize: "10px",
+              fontSize: "11px",
               color: COLORS.textSecondary,
               letterSpacing: "1px",
               textTransform: "uppercase",
@@ -170,14 +211,15 @@ export default function LoginPage() {
                   padding: "12px 12px 12px 40px",
                   background: COLORS.bgDark,
                   border: `1px solid ${COLORS.bgLight}`,
-                  borderRadius: "2px",
+                  borderRadius: "4px",
                   color: COLORS.textPrimary,
                   fontSize: "14px",
                   fontFamily: "monospace",
                   outline: "none",
                   boxSizing: "border-box",
+                  transition: "border-color 0.2s ease",
                 }}
-                onFocus={(e) => e.target.style.borderColor = COLORS.orange}
+                onFocus={(e) => e.target.style.borderColor = COLORS.cyan}
                 onBlur={(e) => e.target.style.borderColor = COLORS.bgLight}
               />
             </div>
@@ -187,7 +229,7 @@ export default function LoginPage() {
           <div style={{ marginBottom: "32px" }}>
             <label style={{
               display: "block",
-              fontSize: "10px",
+              fontSize: "11px",
               color: COLORS.textSecondary,
               letterSpacing: "1px",
               textTransform: "uppercase",
@@ -216,14 +258,15 @@ export default function LoginPage() {
                   padding: "12px 12px 12px 40px",
                   background: COLORS.bgDark,
                   border: `1px solid ${COLORS.bgLight}`,
-                  borderRadius: "2px",
+                  borderRadius: "4px",
                   color: COLORS.textPrimary,
                   fontSize: "14px",
                   fontFamily: "monospace",
                   outline: "none",
                   boxSizing: "border-box",
+                  transition: "border-color 0.2s ease",
                 }}
-                onFocus={(e) => e.target.style.borderColor = COLORS.orange}
+                onFocus={(e) => e.target.style.borderColor = COLORS.cyan}
                 onBlur={(e) => e.target.style.borderColor = COLORS.bgLight}
               />
             </div>
@@ -238,10 +281,10 @@ export default function LoginPage() {
               padding: "14px",
               background: loading 
                 ? COLORS.bgLight 
-                : `linear-gradient(135deg, ${COLORS.yellow} 0%, ${COLORS.orange} 100%)`,
-              border: `1px solid ${loading ? COLORS.bgLight : COLORS.yellow}`,
-              borderRadius: "2px",
-              color: COLORS.bgDark,
+                : `linear-gradient(135deg, ${COLORS.cyan} 0%, #06b6d4 100%)`,
+              border: `1px solid ${loading ? COLORS.bgLight : COLORS.cyan}`,
+              borderRadius: "4px",
+              color: loading ? COLORS.textSecondary : "#0a0e14",
               fontSize: "13px",
               fontWeight: 700,
               letterSpacing: "2px",
@@ -252,7 +295,7 @@ export default function LoginPage() {
               alignItems: "center",
               justifyContent: "center",
               gap: "10px",
-              boxShadow: loading ? "none" : `0 0 20px ${COLORS.yellow}40`,
+              boxShadow: loading ? "none" : `0 0 30px ${COLORS.cyan}50`,
               transition: "all 0.2s ease"
             }}
           >
@@ -260,6 +303,25 @@ export default function LoginPage() {
             {loading ? "AUTHENTICATING..." : "ACCESS SYSTEM"}
           </button>
         </form>
+
+        {/* Footer */}
+        <div style={{
+          marginTop: "32px",
+          paddingTop: "24px",
+          borderTop: `1px solid ${COLORS.bgLight}`,
+          textAlign: "center",
+        }}>
+          <div style={{
+            fontSize: "10px",
+            color: COLORS.textSecondary,
+            letterSpacing: "1px",
+            lineHeight: 1.6,
+          }}>
+            AUTHORIZED PERSONNEL ONLY
+            <br />
+            RESOURCE MANAGEMENT SYSTEM v0.1.0
+          </div>
+        </div>
       </div>
     </div>
   );
