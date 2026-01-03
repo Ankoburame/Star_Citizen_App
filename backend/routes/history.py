@@ -3,10 +3,13 @@ Router pour l'historique des événements avec tags et crew tracking
 """
 
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from jose import JWTError, jwt
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from datetime import datetime
 from pydantic import BaseModel
+from fastapi import status
 
 from database import get_db
 from models.history_event import HistoryEvent
@@ -14,6 +17,9 @@ from models.user import User
 
 router = APIRouter(prefix="/stats/history", tags=["History"])
 
+security = HTTPBearer()
+SECRET_KEY = os.getenv("SECRET_KEY", "your-secret-key-change-in-production")
+ALGORITHM = "HS256"
 
 # ========================================
 # SCHEMAS
@@ -70,6 +76,48 @@ class HistoryEventResponse(BaseModel):
     class Config:
         from_attributes = True
 
+# Fonction pour récupérer l'utilisateur actuel
+def get_current_user(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    db: Session = Depends(get_db)
+):
+    """
+    Vérifie le token JWT et retourne l'utilisateur
+    """
+    try:
+        token = credentials.credentials
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        user_id: int = payload.get("sub")
+        if user_id is None:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid authentication credentials"
+            )
+    except JWTError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid authentication credentials"
+        )
+    
+    user = db.query(User).filter(User.id == user_id).first()
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+    return user
+
+# Fonction pour vérifier admin
+def require_admin(current_user: User = Depends(get_current_user)):
+    """
+    Vérifie que l'utilisateur est admin
+    """
+    if current_user.role != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin access required"
+        )
+    return current_user
 
 # ========================================
 # ENDPOINTS
@@ -82,8 +130,11 @@ async def get_history_events(
     tag: Optional[str] = None,
     crew_member: Optional[int] = None,
     search: Optional[str] = None,
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
+    """Get history events - members see their own, admins see all"""
+    query = db.query(HistoryEvent)
     """
     Get history events with optional filters
     
@@ -91,7 +142,11 @@ async def get_history_events(
     - crew_member: Filter by crew member user_id
     - search: Search in title and description
     """
-    query = db.query(HistoryEvent).order_by(HistoryEvent.event_date.desc())
+    # Si pas admin, voir seulement ses events
+    if not current_user.is_admin:
+        query = query.filter(HistoryEvent.user_id == current_user.id)
+    
+    query = query.order_by(HistoryEvent.event_date.desc())
     
     # Filter by tag
     if tag:
