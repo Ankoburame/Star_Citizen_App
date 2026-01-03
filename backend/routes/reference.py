@@ -6,7 +6,10 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import List
 from database import get_db
-from models import ScanSignature, Refinery, RefineryBonus, RefiningMethod
+from models.scan_signature import ScanSignature
+from models.refinery_bonus import RefineryBonus
+from models.refining_method import RefiningMethod
+from models.refinery import Refinery
 from pydantic import BaseModel
 
 router = APIRouter(prefix="/reference", tags=["reference"])
