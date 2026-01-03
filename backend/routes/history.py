@@ -2,15 +2,19 @@
 Router pour l'historique des événements avec tags et crew tracking
 """
 
-from fastapi import APIRouter, Depends, HTTPException
+# 1. Standard library
+from datetime import datetime
+from typing import List, Optional
+import os
+
+# 2. Third-party
+from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from jose import JWTError, jwt
-from sqlalchemy.orm import Session
-from typing import List, Optional
-from datetime import datetime
 from pydantic import BaseModel
-from fastapi import status
+from sqlalchemy.orm import Session
 
+# 3. Local
 from database import get_db
 from models.history_event import HistoryEvent
 from models.user import User
