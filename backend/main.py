@@ -13,8 +13,8 @@ from database import SessionLocal
 from services.pricing_service import ensure_quantanium_price
 
 # Import routers
-from routes import reference, auth
-from api import production, commerce, market, price_history
+from routes import reference
+from api import production, commerce, market, price_history, auth
 from api.dashboard import router as dashboard_router
 from api.materials import router as materials_router
 from api.pricing import router as pricing_router
