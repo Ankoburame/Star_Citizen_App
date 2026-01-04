@@ -9,21 +9,18 @@ from typing import AsyncGenerator
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from api.dashboard import router as dashboard_router
-from api.materials import router as materials_router
-from api.market import router as market_router  # ✅ NOUVEAU
-from api.pricing import router as pricing_router
-from api.production import router as production_router
-from api.trade import router as trade_router
-from api.ws_dashboard import router as ws_dashboard_router
 from database import SessionLocal
 from services.pricing_service import ensure_quantanium_price
-from api.price_history import router as history_router
-from api import market, price_history
-from api import market, price_history, production
-from api import production, market, commerce
-from api import auth
-from models.user import User
+
+# Import routers
+from routes import reference
+from api import production, commerce, market, price_history, auth
+from api.dashboard import router as dashboard_router
+from api.materials import router as materials_router
+from api.pricing import router as pricing_router
+from api.trade import router as trade_router
+from api.ws_dashboard import router as ws_dashboard_router
+from routes import reference, history
 
 
 @asynccontextmanager
@@ -85,18 +82,30 @@ app.add_middleware(
 # HTTP ROUTES
 # ============================================================================
 
-app.include_router(materials_router, prefix="/materials", tags=["Materials"])
-app.include_router(production_router, tags=["Production"])  # ✅ Sans prefix
-app.include_router(trade_router, prefix="/trade", tags=["Trade"])
-app.include_router(dashboard_router, prefix="/dashboard", tags=["Dashboard"])
-app.include_router(pricing_router, tags=["Pricing"])  # Already has /pricing prefix
-app.include_router(market_router, prefix="/market", tags=["Market"])  # ✅ NOUVEAU
-app.include_router(history_router, prefix="/history", tags=["Price History"])
-app.include_router(market.router)
-app.include_router(price_history.router)
-app.include_router(production.router) 
-app.include_router(commerce.router)
+# Authentication
 app.include_router(auth.router, prefix="/auth", tags=["Authentication"])
+
+# Reference data
+app.include_router(reference.router)
+
+# Dashboard & Materials
+app.include_router(dashboard_router, prefix="/dashboard", tags=["Dashboard"])
+app.include_router(materials_router, prefix="/materials", tags=["Materials"])
+
+# Production & Commerce
+app.include_router(production.router)
+app.include_router(commerce.router)
+
+# Market & Pricing
+app.include_router(market.router)
+app.include_router(pricing_router, tags=["Pricing"])
+app.include_router(price_history.router)
+
+# Trade
+app.include_router(trade_router, prefix="/trade", tags=["Trade"])
+
+# History
+app.include_router(history.router)
 
 # ============================================================================
 # WEBSOCKET ROUTES

@@ -3,6 +3,7 @@
 import { Menu, Wifi, Settings, User, Bell, Search, LogOut, Home, Lock, Shield } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
 
@@ -178,28 +179,50 @@ export function Topbar({ sidebarOpen, toggleSidebar }: TopbarProps) {
             <Menu style={{ width: "20px", height: "20px" }} />
           </button>
 
-          <div>
-            <h1
-              style={{
-                fontSize: "18px",
-                fontWeight: 700,
-                color: "white",
-                letterSpacing: "2px",
-                textTransform: "uppercase",
-                margin: 0,
-              }}
-            >
-              Star Citizen – Economy Tool
-            </h1>
+          <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+            {/* Logo OVG Icon */}
             <div
               style={{
-                fontSize: "11px",
-                color: "#52525b",
-                letterSpacing: "1px",
-                marginTop: "2px",
+                width: "36px",
+                height: "36px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                filter: "drop-shadow(0 0 15px rgba(6, 182, 212, 0.5))",
               }}
             >
-              Resource Management System
+              <Image
+                src="/images/logo/ovg_icon_only.svg"
+                alt="OVG"
+                width={36}
+                height={36}
+                priority
+              />
+            </div>
+
+            <div>
+              <h1
+                style={{
+                  fontSize: "18px",
+                  fontWeight: 700,
+                  color: "#22d3ee",
+                  letterSpacing: "2px",
+                  textTransform: "uppercase",
+                  margin: 0,
+                }}
+              >
+                OBSIDIAN VENTURES GROUP
+              </h1>
+              <div
+                style={{
+                  fontSize: "11px",
+                  color: "#52525b",
+                  letterSpacing: "1px",
+                  marginTop: "2px",
+                }}
+              >
+                Resource Management System
+              </div>
             </div>
           </div>
         </div>
@@ -425,7 +448,6 @@ export function Topbar({ sidebarOpen, toggleSidebar }: TopbarProps) {
                   <Home style={{ width: "16px", height: "16px" }} />
                   Dashboard
                 </button>
-                {/* ✅ ADMIN PANEL (only for admins) */}
                 {user.role === 'admin' && (
                   <button
                     onClick={() => {
@@ -459,7 +481,6 @@ export function Topbar({ sidebarOpen, toggleSidebar }: TopbarProps) {
                     Admin Panel
                   </button>
                 )}
-                {/* ✅ BOUTON CHANGE PASSWORD */}
                 <button
                   onClick={() => {
                     setUserMenuOpen(false);
@@ -524,7 +545,7 @@ export function Topbar({ sidebarOpen, toggleSidebar }: TopbarProps) {
         </div>
       </header>
 
-      {/* ✅ MODAL CHANGE PASSWORD */}
+      {/* MODAL CHANGE PASSWORD */}
       {showPasswordModal && (
         <div
           style={{
