@@ -197,6 +197,34 @@ export default function UsersManagementPage() {
         }
     };
 
+    const handleDeleteUser = async (userId: number, username: string) => {
+        // Confirmation
+        if (!confirm(`Are you sure you want to delete user "${username}"?\n\nThis action cannot be undone.`)) {
+            return;
+        }
+
+        try {
+            const token = localStorage.getItem("token");
+            const response = await fetch(`${API_URL}/auth/users/${userId}`, {
+                method: "DELETE",
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+            });
+
+            if (!response.ok) {
+                const data = await response.json();
+                throw new Error(data.detail || "Failed to delete user");
+            }
+
+            // Reload users
+            loadUsers();
+        } catch (err: any) {
+            alert(`Error: ${err.message}`);
+            console.error("Failed to delete user:", err);
+        }
+    };
+
     if (loading) {
         return (
             <div style={{
@@ -374,6 +402,7 @@ export default function UsersManagementPage() {
 
                                 {/* Delete Button */}
                                 <button
+                                    onClick={() => handleDeleteUser(user.id, user.username)}  // ✅ AJOUTER
                                     style={{
                                         padding: "6px 12px",
                                         background: "transparent",
@@ -381,8 +410,9 @@ export default function UsersManagementPage() {
                                         borderRadius: "4px",
                                         color: COLORS.red,
                                         fontSize: "11px",
-                                        cursor: "pointer",
+                                        cursor: user.id === currentUser?.id ? "not-allowed" : "pointer",  // ✅ MODIFIER
                                         fontFamily: "monospace",
+                                        opacity: user.id === currentUser?.id ? 0.5 : 1,  // ✅ AJOUTER
                                     }}
                                     disabled={user.id === currentUser?.id}
                                 >

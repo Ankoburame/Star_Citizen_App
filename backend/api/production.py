@@ -249,6 +249,7 @@ def get_refining_job(job_id: int, current_user: User = Depends(get_current_user)
 def collect_refining_job(job_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """Récupère un job terminé et transfère au stock."""
     from decimal import Decimal
+    from models.history_event import HistoryEvent  # ✅ IMPORT
     
     job = db.query(RefiningJob).filter(RefiningJob.id == job_id, RefiningJob.user_id == current_user.id).first()
     if not job:
@@ -258,6 +259,9 @@ def collect_refining_job(job_id: int, current_user: User = Depends(get_current_u
         raise HTTPException(status_code=400, detail="Job déjà collecté ou annulé")
     
     # Transférer les matériaux vers l'inventaire
+    total_quantity_scu = Decimal('0')
+    material_names = []
+    
     for job_mat in job.materials:
         # Chercher ou créer l'entrée d'inventaire
         inventory = db.query(Inventory).filter(
@@ -268,6 +272,11 @@ def collect_refining_job(job_id: int, current_user: User = Depends(get_current_u
         
         # Convertir quantité brute en SCU (÷ 100)
         quantity_scu = Decimal(str(job_mat.quantity_refined)) / Decimal('100')
+        total_quantity_scu += quantity_scu
+        
+        # Collecter les noms de matériaux
+        if hasattr(job_mat, 'material') and job_mat.material:
+            material_names.append(job_mat.material.name)
         
         if inventory:
             inventory.add_quantity(quantity_scu)
@@ -284,9 +293,41 @@ def collect_refining_job(job_id: int, current_user: User = Depends(get_current_u
     job.status = "collected"
     job.collected_at = datetime.utcnow()
     
+    # ✅ AUTO-CREATE HISTORY EVENT
+    # Calculer profit/loss
+    total_cost = float(job.total_cost or 0)
+    # On ne peut pas calculer le revenu exact ici (pas de prix de vente)
+    # Donc on met juste le coût en négatif
+    profit = -total_cost
+    
+    # Déterminer tags
+    tags = ["refining"]
+    if profit < 0:
+        tags.append("cost")  # Coût initial
+    
+    # Créer description
+    materials_str = ", ".join(material_names) if material_names else "materials"
+    description = f"Collected {float(total_quantity_scu):.2f} SCU of {materials_str} from refinery."
+    if job.notes:
+        description += f" Notes: {job.notes}"
+    
+    # Créer l'event
+    history_event = HistoryEvent(
+        user_id=current_user.id,
+        title=f"Refining - {job.refinery.name if hasattr(job, 'refinery') and job.refinery else 'Refinery'}",
+        description=description,
+        event_type="refining",
+        tags=tags,
+        crew_members=[current_user.id],
+        amount=profit,  # Coût négatif pour l'instant
+        location=job.refinery.location if hasattr(job, 'refinery') and job.refinery else None,
+        event_date=datetime.utcnow()
+    )
+    
+    db.add(history_event)
     db.commit()
     
-    return {"message": "Job collecté avec succès", "job_id": job_id}
+    return {"message": "Job collecté avec succès", "job_id": job_id, "history_event_created": True}
     # Convertir quantité brute en SCU (÷ 100)
     from decimal import Decimal  # ← AJOUTER EN HAUT DU FICHIER (ligne ~10)
 
@@ -363,7 +404,8 @@ def get_inventory(
 
 @router.post("/sales", response_model=SaleSchema)
 def create_sale(sale: SaleCreate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    """Enregistre une vente."""
+    """Enregistre une vente avec auto-clear du stock."""
+    from models.history_event import HistoryEvent  # ✅ IMPORT
     
     # Vérifier l'inventaire
     inventory = db.query(Inventory).filter(
@@ -372,16 +414,25 @@ def create_sale(sale: SaleCreate, current_user: User = Depends(get_current_user)
         Inventory.user_id == current_user.id 
     ).first()
     
-    if not inventory or inventory.quantity < sale.quantity_sold:
-        raise HTTPException(status_code=400, detail="Stock insuffisant")
+    if not inventory:
+        raise HTTPException(status_code=404, detail="Material not found in inventory")
+    
+    # ✅ AUTO-CLEAR LOGIC
+    actual_quantity_sold = sale.quantity_sold
+    stock_cleared = False
+    
+    if sale.quantity_sold >= inventory.quantity:
+        # Vendre tout le stock disponible
+        actual_quantity_sold = inventory.quantity
+        stock_cleared = True
     
     # Calculer le revenu total
-    total_revenue = sale.quantity_sold * sale.unit_price
+    total_revenue = actual_quantity_sold * sale.unit_price
     
     # Créer la vente
     new_sale = Sale(
         material_id=sale.material_id,
-        quantity_sold=sale.quantity_sold,
+        quantity_sold=actual_quantity_sold,  # ✅ Quantité ajustée
         unit_price=sale.unit_price,
         total_revenue=total_revenue,
         refining_cost=sale.refining_cost,
@@ -393,9 +444,31 @@ def create_sale(sale: SaleCreate, current_user: User = Depends(get_current_user)
     
     db.add(new_sale)
     
-    # Retirer du stock
-    inventory.remove_quantity(sale.quantity_sold)
+    # ✅ Update ou delete inventory
+    if stock_cleared:
+        # Effacer complètement l'inventaire
+        db.delete(inventory)
+    else:
+        # Retirer du stock
+        inventory.remove_quantity(actual_quantity_sold)
     
+    # ✅ AUTO-CREATE HISTORY EVENT
+    material_name = inventory.material.name if hasattr(inventory, 'material') and inventory.material else "Material"
+    location_name = new_sale.sale_location.name if hasattr(new_sale, 'sale_location') and new_sale.sale_location else sale.sale_location_id
+    
+    history_event = HistoryEvent(
+        user_id=current_user.id,
+        title=f"Sale - {material_name}",
+        description=f"Sold {actual_quantity_sold:.2f} SCU at {location_name}. {sale.notes or ''}".strip(),
+        event_type="sale",
+        tags=["trading", "profit"],
+        crew_members=[current_user.id],
+        amount=float(total_revenue),
+        location=str(location_name),
+        event_date=datetime.utcnow()
+    )
+    
+    db.add(history_event)
     db.commit()
     db.refresh(new_sale)
     
