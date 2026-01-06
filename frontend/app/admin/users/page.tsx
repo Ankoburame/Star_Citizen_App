@@ -198,8 +198,7 @@ export default function UsersManagementPage() {
     };
 
     const handleDeleteUser = async (userId: number, username: string) => {
-        // Confirmation
-        if (!confirm(`Are you sure you want to delete user "${username}"?\n\nThis action cannot be undone.`)) {
+        if (!confirm(`Delete user "${username}"?\n\nThis cannot be undone.`)) {
             return;
         }
 
@@ -217,11 +216,37 @@ export default function UsersManagementPage() {
                 throw new Error(data.detail || "Failed to delete user");
             }
 
-            // Reload users
             loadUsers();
         } catch (err: any) {
             alert(`Error: ${err.message}`);
-            console.error("Failed to delete user:", err);
+        }
+    };
+
+    const handleChangeRole = async (userId: number, username: string, currentRole: string) => {
+        const newRole = prompt(
+            `Change role for "${username}"\n\nCurrent: ${currentRole}\n\nEnter new role (admin/member/viewer):`,
+            currentRole
+        );
+
+        if (!newRole || newRole === currentRole) return;
+
+        try {
+            const token = localStorage.getItem("token");
+            const response = await fetch(`${API_URL}/auth/users/${userId}/role?new_role=${newRole}`, {
+                method: "PUT",
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+            });
+
+            if (!response.ok) {
+                const data = await response.json();
+                throw new Error(data.detail || "Failed to change role");
+            }
+
+            loadUsers();
+        } catch (err: any) {
+            alert(`Error: ${err.message}`);
         }
     };
 
@@ -376,6 +401,25 @@ export default function UsersManagementPage() {
                                 </span>
                             </div>
                             <div style={{ display: "flex", gap: "8px" }}>
+                                {/* Change Role Button */}
+                                <button
+                                    onClick={() => handleChangeRole(user.id, user.username, user.role)}
+                                    disabled={user.id === currentUser?.id}
+                                    style={{
+                                        padding: "6px 12px",
+                                        background: "transparent",
+                                        border: `1px solid ${COLORS.cyan}40`,
+                                        borderRadius: "4px",
+                                        color: COLORS.cyan,
+                                        fontSize: "11px",
+                                        cursor: user.id === currentUser?.id ? "not-allowed" : "pointer",
+                                        fontFamily: "monospace",
+                                        opacity: user.id === currentUser?.id ? 0.5 : 1,
+                                    }}
+                                >
+                                    <Shield style={{ width: "14px", height: "14px" }} />
+                                </button>
+
                                 {/* Reset Password Button */}
                                 <button
                                     onClick={() => {
@@ -392,9 +436,6 @@ export default function UsersManagementPage() {
                                         fontSize: "11px",
                                         cursor: "pointer",
                                         fontFamily: "monospace",
-                                        display: "flex",
-                                        alignItems: "center",
-                                        gap: "4px",
                                     }}
                                 >
                                     <Lock style={{ width: "14px", height: "14px" }} />
@@ -402,7 +443,8 @@ export default function UsersManagementPage() {
 
                                 {/* Delete Button */}
                                 <button
-                                    onClick={() => handleDeleteUser(user.id, user.username)}  // ✅ AJOUTER
+                                    onClick={() => handleDeleteUser(user.id, user.username)}
+                                    disabled={user.id === currentUser?.id}
                                     style={{
                                         padding: "6px 12px",
                                         background: "transparent",
@@ -410,11 +452,10 @@ export default function UsersManagementPage() {
                                         borderRadius: "4px",
                                         color: COLORS.red,
                                         fontSize: "11px",
-                                        cursor: user.id === currentUser?.id ? "not-allowed" : "pointer",  // ✅ MODIFIER
+                                        cursor: user.id === currentUser?.id ? "not-allowed" : "pointer",
                                         fontFamily: "monospace",
-                                        opacity: user.id === currentUser?.id ? 0.5 : 1,  // ✅ AJOUTER
+                                        opacity: user.id === currentUser?.id ? 0.5 : 1,
                                     }}
-                                    disabled={user.id === currentUser?.id}
                                 >
                                     <Trash2 style={{ width: "14px", height: "14px" }} />
                                 </button>

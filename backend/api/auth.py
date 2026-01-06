@@ -109,6 +109,82 @@ def register(
     
     return new_user
 
+@router.delete("/users/{user_id}")
+def delete_user(
+    user_id: int,
+    current_user: User = Depends(require_role(["admin"])),
+    db: Session = Depends(get_db)
+):
+    """Supprimer un utilisateur (ADMIN only)."""
+    
+    # Vérifier qu'on ne delete pas soi-même
+    if user_id == current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot delete yourself"
+        )
+    
+    # Trouver l'utilisateur
+    user = db.query(User).filter(User.id == user_id).first()
+    
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+    
+    # Supprimer
+    db.delete(user)
+    db.commit()
+    
+    return {"message": f"User {user.username} deleted successfully"}
+
+
+@router.put("/users/{user_id}/role")
+def change_user_role(
+    user_id: int,
+    new_role: str,
+    current_user: User = Depends(require_role(["admin"])),
+    db: Session = Depends(get_db)
+):
+    """Changer le rôle d'un utilisateur (ADMIN only)."""
+    
+    # Valider le rôle
+    valid_roles = ["admin", "member", "viewer"]
+    if new_role not in valid_roles:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid role. Must be one of: {', '.join(valid_roles)}"
+        )
+    
+    # Vérifier qu'on ne change pas son propre rôle
+    if user_id == current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot change your own role"
+        )
+    
+    # Trouver l'utilisateur
+    user = db.query(User).filter(User.id == user_id).first()
+    
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+    
+    # Changer le rôle
+    old_role = user.role
+    user.role = new_role
+    db.commit()
+    db.refresh(user)
+    
+    return {
+        "message": f"User {user.username} role changed from {old_role} to {new_role}",
+        "user_id": user.id,
+        "new_role": new_role
+    }
+
 
 @router.post("/login", response_model=Token)
 def login(credentials: UserLogin, db: Session = Depends(get_db)):

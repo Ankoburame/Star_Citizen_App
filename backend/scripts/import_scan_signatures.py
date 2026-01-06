@@ -6,7 +6,7 @@ Execute ce script pour peupler la table scan_signatures.
 import json
 import sys
 from pathlib import Path
-from sqlalchemy import create_engine, Column, Integer, String, JSON
+from sqlalchemy import create_engine, Column, Integer, String, ARRAY, Text
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from dotenv import load_dotenv
@@ -30,8 +30,8 @@ class ScanSignature(Base):
     id = Column(Integer, primary_key=True, index=True)
     type = Column(String(100), nullable=False, unique=True, index=True)
     category = Column(String(50), nullable=False, index=True)
-    signatures = Column(JSON, nullable=False)
-    description = Column(String(500))
+    signatures = Column(ARRAY(Integer), nullable=False)
+    description = Column(Text)
 
 def main():
     print("🚀 Import des signatures de scan...")
