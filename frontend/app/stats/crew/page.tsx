@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { DollarSign, Users, Send, Calculator, TrendingUp, AlertCircle } from "lucide-react";
+import { DollarSign, Users, Send, Calculator, TrendingUp, AlertCircle, Check } from "lucide-react";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
 
@@ -21,27 +21,37 @@ const COLORS = {
   glowGreen: "rgba(34, 197, 94, 0.3)",
 };
 
-interface CrewMember {
-  id: number;
-  username: string;
-  share: number;
-}
-
-interface HistoryEvent {
+interface ProfitableEvent {
   id: number;
   title: string;
   amount: number;
   event_date: string;
-  crew_members_details: Array<{ id: number; username: string }>;
+  crew_count: number;
   tags: string[];
 }
 
+interface CrewShare {
+  user_id: number;
+  username: string;
+  share_amount: number;
+  event_count: number;
+}
+
+interface PayoutCalculation {
+  total_profit: number;
+  service_fee: number;
+  net_amount: number;
+  crew_shares: CrewShare[];
+}
+
 export default function CrewPayoutPage() {
-  const [events, setEvents] = useState<HistoryEvent[]>([]);
+  const [events, setEvents] = useState<ProfitableEvent[]>([]);
   const [selectedEvents, setSelectedEvents] = useState<number[]>([]);
-  const [crewShares, setCrewShares] = useState<CrewMember[]>([]);
+  const [calculation, setCalculation] = useState<PayoutCalculation | null>(null);
   const [loading, setLoading] = useState(true);
-  const [sendingTo, setSendingTo] = useState<number | null>(null);
+  const [calculating, setCalculating] = useState(false);
+  const [executing, setExecuting] = useState(false);
+  const [sentTo, setSentTo] = useState<Set<number>>(new Set());
 
   useEffect(() => {
     loadProfitableEvents();
@@ -50,17 +60,13 @@ export default function CrewPayoutPage() {
   const loadProfitableEvents = async () => {
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch(`${API_URL}/stats/history?tag=profit`, {
+      const response = await fetch(`${API_URL}/stats/crew-payout/profitable-events`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
       if (response.ok) {
         const data = await response.json();
-        // Filter events with amount > 0 and crew members
-        const profitable = data.filter(
-          (e: HistoryEvent) => e.amount > 0 && e.crew_members_details && e.crew_members_details.length > 1
-        );
-        setEvents(profitable);
+        setEvents(data.events || []);
       }
     } catch (err) {
       console.error("Failed to load events:", err);
@@ -75,40 +81,79 @@ export default function CrewPayoutPage() {
     } else {
       setSelectedEvents([...selectedEvents, eventId]);
     }
+    setCalculation(null); // Reset calculation
   };
 
-  const calculateShares = () => {
+  const calculateShares = async () => {
     if (selectedEvents.length === 0) return;
 
-    const selected = events.filter((e) => selectedEvents.includes(e.id));
-    const totalProfit = selected.reduce((sum, e) => sum + e.amount, 0);
-
-    // Get all unique crew members from selected events
-    const crewMap = new Map<number, string>();
-    selected.forEach((event) => {
-      event.crew_members_details.forEach((member) => {
-        crewMap.set(member.id, member.username);
+    setCalculating(true);
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch(`${API_URL}/stats/crew-payout/calculate`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ event_ids: selectedEvents }),
       });
-    });
 
-    // Calculate equal shares
-    const shareAmount = totalProfit / crewMap.size;
-
-    const shares: CrewMember[] = Array.from(crewMap.entries()).map(([id, username]) => ({
-      id,
-      username,
-      share: shareAmount,
-    }));
-
-    setCrewShares(shares);
+      if (response.ok) {
+        const data = await response.json();
+        setCalculation(data);
+      } else {
+        const error = await response.json();
+        alert(`Error: ${error.detail}`);
+      }
+    } catch (err) {
+      console.error("Failed to calculate:", err);
+      alert("Failed to calculate shares");
+    } finally {
+      setCalculating(false);
+    }
   };
 
-  const totalProfit = events
-    .filter((e) => selectedEvents.includes(e.id))
-    .reduce((sum, e) => sum + e.amount, 0);
+  const sendPayout = async (recipientId: number, amount: number, username: string) => {
+    if (executing) return;
+    
+    if (!confirm(`Send ${amount.toFixed(0)} aUEC to ${username}?`)) return;
 
-  const serviceFee = totalProfit * 0.005; // 0.5% service fee like in-game
-  const netAmount = totalProfit - serviceFee;
+    setExecuting(true);
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch(`${API_URL}/stats/crew-payout/execute`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          event_ids: selectedEvents,
+          transactions: [
+            {
+              recipient_id: recipientId,
+              amount: amount,
+              note: `Crew payout for ${selectedEvents.length} events`,
+            },
+          ],
+        }),
+      });
+
+      if (response.ok) {
+        setSentTo(new Set([...sentTo, recipientId]));
+        alert(`✅ Sent ${amount.toFixed(0)} aUEC to ${username}!`);
+      } else {
+        const error = await response.json();
+        alert(`Error: ${error.detail}`);
+      }
+    } catch (err) {
+      console.error("Failed to send:", err);
+      alert("Failed to send payout");
+    } finally {
+      setExecuting(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -211,7 +256,7 @@ export default function CrewPayoutPage() {
               </div>
             </div>
           ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: "12px", maxHeight: "600px", overflowY: "auto" }}>
               {events.map((event) => (
                 <div
                   key={event.id}
@@ -237,8 +282,7 @@ export default function CrewPayoutPage() {
                     </div>
                   </div>
                   <div style={{ fontSize: "12px", color: COLORS.textSecondary }}>
-                    {new Date(event.event_date).toLocaleDateString()} • Crew:{" "}
-                    {event.crew_members_details.map((m) => m.username).join(", ")}
+                    {new Date(event.event_date).toLocaleDateString()} • Crew: {event.crew_count} members
                   </div>
                 </div>
               ))}
@@ -247,32 +291,32 @@ export default function CrewPayoutPage() {
 
           <button
             onClick={calculateShares}
-            disabled={selectedEvents.length === 0}
+            disabled={selectedEvents.length === 0 || calculating}
             style={{
               width: "100%",
               padding: "16px",
               marginTop: "16px",
               background:
-                selectedEvents.length === 0
+                selectedEvents.length === 0 || calculating
                   ? COLORS.bgLight
                   : `linear-gradient(135deg, ${COLORS.cyan} 0%, ${COLORS.cyanDark} 100%)`,
               border: "none",
               borderRadius: "8px",
-              color: selectedEvents.length === 0 ? COLORS.textSecondary : "white",
+              color: selectedEvents.length === 0 || calculating ? COLORS.textSecondary : "white",
               fontSize: "14px",
               fontWeight: 700,
               letterSpacing: "2px",
               textTransform: "uppercase",
-              cursor: selectedEvents.length === 0 ? "not-allowed" : "pointer",
+              cursor: selectedEvents.length === 0 || calculating ? "not-allowed" : "pointer",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
               gap: "8px",
-              boxShadow: selectedEvents.length === 0 ? "none" : `0 0 20px ${COLORS.glowCyan}`,
+              boxShadow: selectedEvents.length === 0 || calculating ? "none" : `0 0 20px ${COLORS.glowCyan}`,
             }}
           >
             <Calculator style={{ width: "18px", height: "18px" }} />
-            CALCULATE SHARES
+            {calculating ? "CALCULATING..." : "CALCULATE SHARES"}
           </button>
         </div>
 
@@ -292,126 +336,155 @@ export default function CrewPayoutPage() {
             PAYOUT SUMMARY
           </div>
 
-          {/* Total Calculation Card */}
-          <div
-            style={{
-              padding: "24px",
-              background: `linear-gradient(135deg, ${COLORS.bgMedium} 0%, ${COLORS.bgDark} 100%)`,
-              border: `2px solid ${COLORS.cyan}60`,
-              borderRadius: "12px",
-              marginBottom: "24px",
-              boxShadow: `0 0 30px ${COLORS.glowCyan}`,
-            }}
-          >
-            <div style={{ marginBottom: "16px" }}>
-              <div style={{ fontSize: "12px", color: COLORS.textSecondary, marginBottom: "4px" }}>
-                TOTAL PROFIT
-              </div>
-              <div style={{ fontSize: "32px", fontWeight: 700, color: COLORS.green }}>
-                {totalProfit.toLocaleString()} <span style={{ fontSize: "18px" }}>aUEC</span>
-              </div>
-            </div>
-
-            <div
-              style={{
-                height: "1px",
-                background: `linear-gradient(90deg, transparent, ${COLORS.cyan}40, transparent)`,
-                margin: "16px 0",
-              }}
-            />
-
-            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px" }}>
-              <div style={{ fontSize: "12px", color: COLORS.textSecondary }}>SERVICE FEE (0.5%)</div>
-              <div style={{ fontSize: "14px", color: COLORS.orange }}>-{serviceFee.toFixed(0)} aUEC</div>
-            </div>
-
-            <div style={{ display: "flex", justifyContent: "space-between", marginTop: "16px" }}>
-              <div style={{ fontSize: "14px", fontWeight: 700, color: COLORS.textPrimary }}>NET AMOUNT</div>
-              <div style={{ fontSize: "20px", fontWeight: 700, color: COLORS.green }}>
-                {netAmount.toFixed(0)} aUEC
-              </div>
-            </div>
-          </div>
-
-          {/* Crew Shares */}
-          {crewShares.length > 0 && (
-            <div
-              style={{
-                padding: "24px",
-                background: COLORS.bgMedium,
-                border: `1px solid ${COLORS.green}40`,
-                borderRadius: "12px",
-              }}
-            >
+          {calculation ? (
+            <>
+              {/* Total Calculation Card */}
               <div
                 style={{
-                  fontSize: "14px",
-                  fontWeight: 700,
-                  color: COLORS.textPrimary,
-                  marginBottom: "16px",
-                  letterSpacing: "1px",
-                  textTransform: "uppercase",
+                  padding: "24px",
+                  background: `linear-gradient(135deg, ${COLORS.bgMedium} 0%, ${COLORS.bgDark} 100%)`,
+                  border: `2px solid ${COLORS.cyan}60`,
+                  borderRadius: "12px",
+                  marginBottom: "24px",
+                  boxShadow: `0 0 30px ${COLORS.glowCyan}`,
                 }}
               >
-                SENDING TO
+                <div style={{ marginBottom: "16px" }}>
+                  <div style={{ fontSize: "12px", color: COLORS.textSecondary, marginBottom: "4px" }}>
+                    TOTAL PROFIT
+                  </div>
+                  <div style={{ fontSize: "32px", fontWeight: 700, color: COLORS.green }}>
+                    {calculation.total_profit.toLocaleString()} <span style={{ fontSize: "18px" }}>aUEC</span>
+                  </div>
+                </div>
+
+                <div
+                  style={{
+                    height: "1px",
+                    background: `linear-gradient(90deg, transparent, ${COLORS.cyan}40, transparent)`,
+                    margin: "16px 0",
+                  }}
+                />
+
+                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px" }}>
+                  <div style={{ fontSize: "12px", color: COLORS.textSecondary }}>SERVICE FEE (0.5%)</div>
+                  <div style={{ fontSize: "14px", color: COLORS.orange }}>-{calculation.service_fee.toFixed(0)} aUEC</div>
+                </div>
+
+                <div style={{ display: "flex", justifyContent: "space-between", marginTop: "16px" }}>
+                  <div style={{ fontSize: "14px", fontWeight: 700, color: COLORS.textPrimary }}>NET AMOUNT</div>
+                  <div style={{ fontSize: "20px", fontWeight: 700, color: COLORS.green }}>
+                    {calculation.net_amount.toFixed(0)} aUEC
+                  </div>
+                </div>
               </div>
 
-              {crewShares.map((member) => (
+              {/* Crew Shares */}
+              <div
+                style={{
+                  padding: "24px",
+                  background: COLORS.bgMedium,
+                  border: `1px solid ${COLORS.green}40`,
+                  borderRadius: "12px",
+                }}
+              >
                 <div
-                  key={member.id}
                   style={{
-                    padding: "16px",
-                    background: `linear-gradient(135deg, ${COLORS.green}10 0%, transparent 100%)`,
-                    border: `1px solid ${COLORS.green}40`,
-                    borderRadius: "8px",
-                    marginBottom: "12px",
+                    fontSize: "14px",
+                    fontWeight: 700,
+                    color: COLORS.textPrimary,
+                    marginBottom: "16px",
+                    letterSpacing: "1px",
+                    textTransform: "uppercase",
                   }}
                 >
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <div>
-                      <div style={{ fontSize: "16px", fontWeight: 700, color: COLORS.green }}>
-                        {member.username}
-                      </div>
-                      <div style={{ fontSize: "11px", color: COLORS.textSecondary, marginTop: "2px" }}>
-                        @{member.username.toLowerCase()}
-                      </div>
-                    </div>
+                  SENDING TO
+                </div>
 
-                    <div style={{ textAlign: "right" }}>
-                      <div style={{ fontSize: "18px", fontWeight: 700, color: COLORS.textPrimary }}>
-                        {member.share.toFixed(0)}
-                      </div>
-                      <div style={{ fontSize: "11px", color: COLORS.textSecondary }}>aUEC</div>
-                    </div>
-                  </div>
-
-                  <button
-                    onClick={() => setSendingTo(member.id)}
+                {calculation.crew_shares.map((member) => (
+                  <div
+                    key={member.user_id}
                     style={{
-                      width: "100%",
-                      padding: "12px",
-                      marginTop: "12px",
-                      background: `linear-gradient(135deg, ${COLORS.green} 0%, ${COLORS.greenDark} 100%)`,
-                      border: "none",
-                      borderRadius: "6px",
-                      color: "white",
-                      fontSize: "12px",
-                      fontWeight: 700,
-                      letterSpacing: "1px",
-                      textTransform: "uppercase",
-                      cursor: "pointer",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      gap: "8px",
-                      boxShadow: `0 0 15px ${COLORS.glowGreen}`,
+                      padding: "16px",
+                      background: `linear-gradient(135deg, ${COLORS.green}10 0%, transparent 100%)`,
+                      border: `1px solid ${COLORS.green}40`,
+                      borderRadius: "8px",
+                      marginBottom: "12px",
                     }}
                   >
-                    <Send style={{ width: "14px", height: "14px" }} />
-                    SEND
-                  </button>
-                </div>
-              ))}
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <div>
+                        <div style={{ fontSize: "16px", fontWeight: 700, color: COLORS.green }}>
+                          {member.username}
+                        </div>
+                        <div style={{ fontSize: "11px", color: COLORS.textSecondary, marginTop: "2px" }}>
+                          @{member.username.toLowerCase()}
+                        </div>
+                      </div>
+
+                      <div style={{ textAlign: "right" }}>
+                        <div style={{ fontSize: "18px", fontWeight: 700, color: COLORS.textPrimary }}>
+                          {member.share_amount.toFixed(0)}
+                        </div>
+                        <div style={{ fontSize: "11px", color: COLORS.textSecondary }}>aUEC</div>
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={() => sendPayout(member.user_id, member.share_amount, member.username)}
+                      disabled={executing || sentTo.has(member.user_id)}
+                      style={{
+                        width: "100%",
+                        padding: "12px",
+                        marginTop: "12px",
+                        background: sentTo.has(member.user_id)
+                          ? COLORS.bgLight
+                          : `linear-gradient(135deg, ${COLORS.green} 0%, ${COLORS.greenDark} 100%)`,
+                        border: "none",
+                        borderRadius: "6px",
+                        color: sentTo.has(member.user_id) ? COLORS.textSecondary : "white",
+                        fontSize: "12px",
+                        fontWeight: 700,
+                        letterSpacing: "1px",
+                        textTransform: "uppercase",
+                        cursor: executing || sentTo.has(member.user_id) ? "not-allowed" : "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        gap: "8px",
+                        boxShadow: sentTo.has(member.user_id) ? "none" : `0 0 15px ${COLORS.glowGreen}`,
+                      }}
+                    >
+                      {sentTo.has(member.user_id) ? (
+                        <>
+                          <Check style={{ width: "14px", height: "14px" }} />
+                          SENT
+                        </>
+                      ) : (
+                        <>
+                          <Send style={{ width: "14px", height: "14px" }} />
+                          {executing ? "SENDING..." : "SEND"}
+                        </>
+                      )}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </>
+          ) : (
+            <div
+              style={{
+                padding: "60px 40px",
+                background: COLORS.bgMedium,
+                border: `1px solid ${COLORS.cyan}20`,
+                borderRadius: "12px",
+                textAlign: "center",
+                color: COLORS.textSecondary,
+              }}
+            >
+              <Calculator style={{ width: "48px", height: "48px", margin: "0 auto 20px", opacity: 0.3 }} />
+              <div style={{ fontSize: "14px", marginBottom: "8px" }}>Select events and calculate shares</div>
+              <div style={{ fontSize: "12px", opacity: 0.7 }}>to see payout distribution</div>
             </div>
           )}
         </div>

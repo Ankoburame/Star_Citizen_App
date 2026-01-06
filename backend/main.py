@@ -98,7 +98,7 @@ app.include_router(commerce.router)
 # Market & Pricing
 app.include_router(market.router, prefix="/market", tags=["Market"])  # ✅ FIXED
 app.include_router(pricing_router, tags=["Pricing"])
-app.include_router(price_history.router)
+app.include_router(price_history.router, prefix="/history", tags=["History"])
 
 # Trade
 app.include_router(trade_router, prefix="/trade", tags=["Trade"])
