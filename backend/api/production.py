@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session, joinedload
 from typing import List, Optional
 from datetime import datetime, timedelta
 from pydantic import BaseModel, ConfigDict
+from decimal import Decimal
 
 from database import get_db
 from models.refinery import Refinery
@@ -14,6 +15,7 @@ from models.refining_job import RefiningJob, RefiningJobMaterial
 from models.inventory import Inventory
 from models.sale import Sale
 from models.material import Material
+from models.history_event import HistoryEvent
 from sqlalchemy import text
 from api.auth import get_current_user
 from models.user import User
@@ -328,30 +330,6 @@ def collect_refining_job(job_id: int, current_user: User = Depends(get_current_u
     db.commit()
     
     return {"message": "Job collecté avec succès", "job_id": job_id, "history_event_created": True}
-    # Convertir quantité brute en SCU (÷ 100)
-    from decimal import Decimal  # ← AJOUTER EN HAUT DU FICHIER (ligne ~10)
-
-# Convertir quantité brute en SCU (÷ 100)
-    quantity_scu = Decimal(str(job_mat.quantity_refined)) / Decimal('100')
-
-    if inventory:
-        inventory.add_quantity(quantity_scu)  # ✅ Decimal + Decimal OK
-    else:
-        inventory = Inventory(
-            refinery_id=job.refinery_id,
-            material_id=job_mat.material_id,
-            user_id=job.user_id,
-            quantity=quantity_scu  # ✅ Decimal OK
-        )
-        db.add(inventory)
-    
-    # Marquer le job comme collecté
-    job.status = "collected"
-    job.collected_at = datetime.utcnow()
-    
-    db.commit()
-    
-    return {"message": "Job collecté avec succès", "job_id": job_id}
 
 
 @router.delete("/jobs/{job_id}")
