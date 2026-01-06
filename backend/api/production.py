@@ -156,7 +156,7 @@ def get_refineries(
 @router.post("/jobs", response_model=RefiningJobSchema)
 def create_refining_job(
     job: RefiningJobCreate, 
-    current_user: User = Depends(get_current_user),  # ✅ AJOUTER
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """Crée un nouveau job de raffinerie."""
@@ -176,7 +176,7 @@ def create_refining_job(
         total_cost=job.total_cost,
         processing_time=job.processing_time,
         end_time=end_time,
-        user_id=current_user.id,  # ✅ AJOUTER CETTE LIGNE
+        user_id=current_user.id,
         notes=job.notes
     )
     db.add(new_job)
@@ -251,7 +251,7 @@ def get_refining_job(job_id: int, current_user: User = Depends(get_current_user)
 def collect_refining_job(job_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """Récupère un job terminé et transfère au stock."""
     from decimal import Decimal
-    from models.history_event import HistoryEvent  # ✅ IMPORT
+    from models.history_event import HistoryEvent
     
     job = db.query(RefiningJob).filter(RefiningJob.id == job_id, RefiningJob.user_id == current_user.id).first()
     if not job:
@@ -298,14 +298,12 @@ def collect_refining_job(job_id: int, current_user: User = Depends(get_current_u
     # ✅ AUTO-CREATE HISTORY EVENT
     # Calculer profit/loss
     total_cost = float(job.total_cost or 0)
-    # On ne peut pas calculer le revenu exact ici (pas de prix de vente)
-    # Donc on met juste le coût en négatif
     profit = -total_cost
     
     # Déterminer tags
     tags = ["refining"]
     if profit < 0:
-        tags.append("cost")  # Coût initial
+        tags.append("cost")
     
     # Créer description
     materials_str = ", ".join(material_names) if material_names else "materials"
@@ -313,16 +311,16 @@ def collect_refining_job(job_id: int, current_user: User = Depends(get_current_u
     if job.notes:
         description += f" Notes: {job.notes}"
     
-    # Créer l'event
+    # ✅ EXPLICIT INT CASTING
     history_event = HistoryEvent(
-        user_id=current_user.id,
+        user_id=int(current_user.id),  # ✅ FORCE INTEGER
         title=f"Refining - {job.refinery.name if hasattr(job, 'refinery') and job.refinery else 'Refinery'}",
         description=description,
         event_type="refining",
         tags=tags,
-        crew_members=[current_user.id],
-        amount=profit,  # Coût négatif pour l'instant
-        location=job.refinery.location if hasattr(job, 'refinery') and job.refinery else None,
+        crew_members=[int(current_user.id)],  # ✅ FORCE INTEGER
+        amount=profit,
+        location=str(job.refinery.location) if hasattr(job, 'refinery') and job.refinery and job.refinery.location else None,
         event_date=datetime.utcnow()
     )
     
@@ -383,7 +381,7 @@ def get_inventory(
 @router.post("/sales", response_model=SaleSchema)
 def create_sale(sale: SaleCreate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """Enregistre une vente avec auto-clear du stock."""
-    from models.history_event import HistoryEvent  # ✅ IMPORT
+    from models.history_event import HistoryEvent
     
     # Vérifier l'inventaire
     inventory = db.query(Inventory).filter(
@@ -400,7 +398,6 @@ def create_sale(sale: SaleCreate, current_user: User = Depends(get_current_user)
     stock_cleared = False
     
     if sale.quantity_sold >= inventory.quantity:
-        # Vendre tout le stock disponible
         actual_quantity_sold = inventory.quantity
         stock_cleared = True
     
@@ -410,7 +407,7 @@ def create_sale(sale: SaleCreate, current_user: User = Depends(get_current_user)
     # Créer la vente
     new_sale = Sale(
         material_id=sale.material_id,
-        quantity_sold=actual_quantity_sold,  # ✅ Quantité ajustée
+        quantity_sold=actual_quantity_sold,
         unit_price=sale.unit_price,
         total_revenue=total_revenue,
         refining_cost=sale.refining_cost,
@@ -424,25 +421,31 @@ def create_sale(sale: SaleCreate, current_user: User = Depends(get_current_user)
     
     # ✅ Update ou delete inventory
     if stock_cleared:
-        # Effacer complètement l'inventaire
         db.delete(inventory)
     else:
-        # Retirer du stock
         inventory.remove_quantity(actual_quantity_sold)
     
     # ✅ AUTO-CREATE HISTORY EVENT
     material_name = inventory.material.name if hasattr(inventory, 'material') and inventory.material else "Material"
-    location_name = new_sale.sale_location.name if hasattr(new_sale, 'sale_location') and new_sale.sale_location else sale.sale_location_id
     
+    # ✅ FIX LOCATION - Ensure it's always a string
+    if sale.sale_location_id and hasattr(new_sale, 'sale_location') and new_sale.sale_location:
+        location_str = str(new_sale.sale_location.name)
+    elif sale.sale_location_id:
+        location_str = f"Location ID {sale.sale_location_id}"
+    else:
+        location_str = "Unknown Location"
+    
+    # ✅ EXPLICIT INT CASTING
     history_event = HistoryEvent(
-        user_id=current_user.id,
+        user_id=int(current_user.id),  # ✅ FORCE INTEGER
         title=f"Sale - {material_name}",
-        description=f"Sold {actual_quantity_sold:.2f} SCU at {location_name}. {sale.notes or ''}".strip(),
+        description=f"Sold {actual_quantity_sold:.2f} SCU at {location_str}. {sale.notes or ''}".strip(),
         event_type="sale",
         tags=["trading", "profit"],
-        crew_members=[current_user.id],
+        crew_members=[int(current_user.id)],  # ✅ FORCE INTEGER
         amount=float(total_revenue),
-        location=str(location_name),
+        location=location_str,
         event_date=datetime.utcnow()
     )
     
