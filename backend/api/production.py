@@ -312,20 +312,31 @@ def collect_refining_job(job_id: int, current_user: User = Depends(get_current_u
         description += f" Notes: {job.notes}"
     
     # ✅ CREATE HISTORY EVENT WITH EXPLICIT TYPES
-    history_event = HistoryEvent()
-    history_event.user_id = int(current_user.id)
-    history_event.title = f"Refining - {job.refinery.name if hasattr(job, 'refinery') and job.refinery else 'Refinery'}"
-    history_event.description = description
-    history_event.event_type = "refining"
-    history_event.tags = tags
-    history_event.crew_members = [int(current_user.id)]
-    history_event.amount = profit
-    history_event.location = str(job.refinery.location) if hasattr(job, 'refinery') and job.refinery and job.refinery.location else None
-    history_event.event_date = datetime.utcnow()
-    
-    db.add(history_event)
+    insert_sql = text("""
+        INSERT INTO history_events 
+        (user_id, title, description, event_type, tags, crew_members, amount, location, event_date)
+        VALUES 
+        (:user_id, :title, :description, :event_type, :tags, :crew_members, :amount, :location, :event_date)
+        RETURNING id
+    """)
+
+    params = {
+        "user_id": int(current_user.id),
+        "title": f"Refining - {job.refinery.name if hasattr(job, 'refinery') and job.refinery else 'Refinery'}",
+        "description": description,
+        "event_type": "refining",
+        "tags": tags,
+        "crew_members": [int(current_user.id)],
+        "amount": profit,
+        "location": str(job.refinery.location) if hasattr(job, 'refinery') and job.refinery and job.refinery.location else None,
+        "event_date": datetime.utcnow()
+    }
+
+    result = db.execute(insert_sql, params)
+    event_id = result.fetchone()[0]
+
     db.commit()
-    
+        
     return {"message": "Job collecté avec succès", "job_id": job_id, "history_event_created": True}
 
 
