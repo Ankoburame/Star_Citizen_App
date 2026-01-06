@@ -123,6 +123,30 @@ def require_admin(current_user: User = Depends(get_current_user)):
         )
     return current_user
 
+def _build_event_response(event: HistoryEvent, db: Session) -> HistoryEventResponse:
+    """Build event response with crew details"""
+    crew_details = []
+    if event.crew_members:
+        crew_users = db.query(User).filter(User.id.in_(event.crew_members)).all()
+        crew_details = [
+            CrewMemberResponse(id=u.id, username=u.username)
+            for u in crew_users
+        ]
+    
+    return HistoryEventResponse(
+        id=event.id,
+        user_id=event.user_id,
+        title=event.title,
+        description=event.description,
+        event_type=event.event_type,
+        tags=event.tags or [],
+        crew_members_ids=event.crew_members or [],
+        crew_members_details=crew_details,
+        amount=event.amount,
+        location=event.location,
+        event_date=event.event_date,
+        created_at=event.created_at
+    )
 # ========================================
 # ENDPOINTS
 # ========================================
@@ -355,3 +379,29 @@ async def get_available_users(db: Session = Depends(get_db)):
     """Get all users available for crew selection"""
     users = db.query(User).all()
     return [CrewMemberResponse(id=u.id, username=u.username) for u in users]
+
+@router.put("/{event_id}", response_model=HistoryEventResponse)
+async def update_history_event_tags(
+    event_id: int,
+    tags_data: dict,  # {"tags": ["mining", "profit"]}
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Update ONLY tags for an event"""
+    event = db.query(HistoryEvent).filter(
+        HistoryEvent.id == event_id
+    ).first()
+    
+    if not event:
+        raise HTTPException(status_code=404, detail="Event not found")
+    
+    # Check ownership if not admin
+    if current_user.role != "admin" and event.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    # Update ONLY tags
+    event.tags = tags_data.get("tags", [])
+    db.commit()
+    db.refresh(event)
+    
+    return _build_event_response(event, db)

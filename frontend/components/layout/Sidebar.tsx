@@ -46,7 +46,7 @@ const referenceItems = [
 const statsItems = [
   { href: "/stats/history", label: "Historique", icon: Clock, available: true },
   { href: "/stats/analytics", label: "Analytics", icon: PieChart, available: false },
-  { href: "/stats/crew-payout", label: "Crew Payout", icon: Users, available: false },
+  { href: "/stats/crew", label: "Crew Payout", icon: Users, available: true }, // ✅ UNLOCKED
 ];
 
 export function Sidebar({ open, toggleSidebar }: SidebarProps) {
@@ -239,10 +239,9 @@ export function Sidebar({ open, toggleSidebar }: SidebarProps) {
                     ? "1px solid rgba(6, 182, 212, 0.3)"
                     : "1px solid transparent",
                   color: active ? "#06b6d4" : "#71717a",
+                  textDecoration: "none",
                   transition: "all 0.2s ease",
                   position: "relative",
-                  textDecoration: "none",
-                  cursor: "pointer",
                 }}
                 onMouseEnter={(e) => {
                   if (!active) {
@@ -289,26 +288,12 @@ export function Sidebar({ open, toggleSidebar }: SidebarProps) {
                     {label}
                   </span>
                 )}
-
-                {active && open && (
-                  <div
-                    style={{
-                      marginLeft: "auto",
-                      width: "6px",
-                      height: "6px",
-                      borderRadius: "50%",
-                      background: "#06b6d4",
-                      boxShadow: "0 0 8px #06b6d4",
-                    }}
-                  />
-                )}
               </Link>
             );
           })}
 
-          {/* REFERENCE SECTION with submenu */}
-          <div style={{ marginTop: "4px" }}>
-            {/* Reference parent */}
+          {/* Reference Section */}
+          <div style={{ marginTop: "24px" }}>
             <button
               onClick={() => setReferenceOpen(!referenceOpen)}
               style={{
@@ -477,9 +462,8 @@ export function Sidebar({ open, toggleSidebar }: SidebarProps) {
             )}
           </div>
 
-          {/* STATS SECTION with submenu */}
-          <div style={{ marginTop: "4px" }}>
-            {/* Stats parent */}
+          {/* Stats Section */}
+          <div style={{ marginTop: "8px" }}>
             <button
               onClick={() => setStatsOpen(!statsOpen)}
               style={{
