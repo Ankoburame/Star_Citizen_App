@@ -14,6 +14,7 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from jose import JWTError, jwt
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
+from sqlalchemy import text
 
 # 3. Local
 from database import get_db
@@ -317,7 +318,7 @@ async def create_history_snapshot(
         "snapshot_date": datetime.utcnow(),
         "total_revenue": round(total_revenue, 2),
         "total_cost": round(total_cost, 2),
-        "net_profit": round(net_profit, 2),
+        "net_profit": round(total_profit, 2),
         "profit_margin": round((net_profit / total_revenue * 100) if total_revenue > 0 else 0, 2),
         "event_counts": event_counts
     }
@@ -462,7 +463,7 @@ async def execute_crew_payout(
                 raise HTTPException(status_code=403, detail="Not authorized")
     
     # Create history events for each payout
-    created_events = []
+    created_count = 0
     
     for transaction in request.transactions:
         # Get recipient
@@ -470,26 +471,32 @@ async def execute_crew_payout(
         if not recipient:
             continue
         
-        # Create payout event
-        payout_event = HistoryEvent()
-        payout_event.user_id = int(current_user.id)
-        payout_event.title = f"Payout - {recipient.username}"
-        payout_event.description = f"Crew payout sent to {recipient.username}. {transaction.note or ''}".strip()
-        payout_event.event_type = "payout"
-        payout_event.tags = ["payout", "crew"]
-        payout_event.crew_members = [int(current_user.id), int(recipient.id)]
-        payout_event.amount = -transaction.amount
-        payout_event.location = None
-        payout_event.event_date = datetime.utcnow()
+        # ✅ RAW SQL INSERT
+        insert_sql = text("""
+            INSERT INTO history_events 
+            (user_id, title, description, event_type, tags, crew_members, amount, location, event_date)
+            VALUES 
+            (:user_id, :title, :description, :event_type, :tags, :crew_members, :amount, :location, :event_date)
+        """)
         
-        db.add(payout_event)
-        created_events.append(payout_event)
+        db.execute(insert_sql, {
+            "user_id": int(current_user.id),
+            "title": f"Payout - {recipient.username}",
+            "description": f"Crew payout sent to {recipient.username}. {transaction.note or ''}".strip(),
+            "event_type": "payout",
+            "tags": ["payout", "crew"],
+            "crew_members": [int(current_user.id), int(recipient.id)],
+            "amount": float(-transaction.amount),
+            "location": None,
+            "event_date": datetime.utcnow()
+        })
+        created_count += 1
     
     db.commit()
     
     return {
-        "message": f"Payout executed: {len(created_events)} transactions created",
-        "transactions_count": len(created_events)
+        "message": f"Payout executed: {created_count} transactions created",
+        "transactions_count": created_count
     }
 
 

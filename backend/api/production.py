@@ -311,32 +311,29 @@ def collect_refining_job(job_id: int, current_user: User = Depends(get_current_u
     if job.notes:
         description += f" Notes: {job.notes}"
     
-    # ✅ CREATE HISTORY EVENT WITH EXPLICIT TYPES
+    
+    # ✅ RAW SQL INSERT
     insert_sql = text("""
         INSERT INTO history_events 
         (user_id, title, description, event_type, tags, crew_members, amount, location, event_date)
         VALUES 
         (:user_id, :title, :description, :event_type, :tags, :crew_members, :amount, :location, :event_date)
-        RETURNING id
     """)
-
-    params = {
+    
+    db.execute(insert_sql, {
         "user_id": int(current_user.id),
         "title": f"Refining - {job.refinery.name if hasattr(job, 'refinery') and job.refinery else 'Refinery'}",
         "description": description,
         "event_type": "refining",
         "tags": tags,
         "crew_members": [int(current_user.id)],
-        "amount": profit,
+        "amount": float(profit) if profit else 0.0,
         "location": str(job.refinery.location) if hasattr(job, 'refinery') and job.refinery and job.refinery.location else None,
         "event_date": datetime.utcnow()
-    }
-
-    result = db.execute(insert_sql, params)
-    event_id = result.fetchone()[0]
-
+    })
+    
     db.commit()
-        
+    
     return {"message": "Job collecté avec succès", "job_id": job_id, "history_event_created": True}
 
 
@@ -446,19 +443,26 @@ def create_sale(sale: SaleCreate, current_user: User = Depends(get_current_user)
     else:
         location_str = "Unknown Location"
     
-    # ✅ CREATE HISTORY EVENT WITH EXPLICIT ASSIGNMENT
-    history_event = HistoryEvent()
-    history_event.user_id = int(current_user.id)
-    history_event.title = f"Sale - {material_name}"
-    history_event.description = f"Sold {actual_quantity_sold:.2f} SCU at {location_str}. {sale.notes or ''}".strip()
-    history_event.event_type = "sale"
-    history_event.tags = ["trading", "profit"]
-    history_event.crew_members = [int(current_user.id)]
-    history_event.amount = float(total_revenue)
-    history_event.location = location_str
-    history_event.event_date = datetime.utcnow()
+    # ✅ RAW SQL INSERT
+    insert_sql = text("""
+        INSERT INTO history_events 
+        (user_id, title, description, event_type, tags, crew_members, amount, location, event_date)
+        VALUES 
+        (:user_id, :title, :description, :event_type, :tags, :crew_members, :amount, :location, :event_date)
+    """)
     
-    db.add(history_event)
+    db.execute(insert_sql, {
+        "user_id": int(current_user.id),
+        "title": f"Sale - {material_name}",
+        "description": f"Sold {actual_quantity_sold:.2f} SCU at {location_str}. {sale.notes or ''}".strip(),
+        "event_type": "sale",
+        "tags": ["trading", "profit"],
+        "crew_members": [int(current_user.id)],
+        "amount": float(total_revenue),
+        "location": location_str,
+        "event_date": datetime.utcnow()
+    })
+    
     db.commit()
     db.refresh(new_sale)
     
