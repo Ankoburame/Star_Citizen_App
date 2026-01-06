@@ -24,4 +24,4 @@ class HistoryEvent(Base):
     amount = Column(DECIMAL(12, 2))
     location = Column(String(100))
     event_date = Column(TIMESTAMP, nullable=False)
-    created_at = Column(TIMESTAMP, server_default=func.now())
+    created_at = Column(TIMESTAMP, server_default=func.now(), default=func.now())  # ✅ BOTH server_default AND default
