@@ -311,18 +311,17 @@ def collect_refining_job(job_id: int, current_user: User = Depends(get_current_u
     if job.notes:
         description += f" Notes: {job.notes}"
     
-    # ✅ EXPLICIT INT CASTING
-    history_event = HistoryEvent(
-        user_id=int(current_user.id),  # ✅ FORCE INTEGER
-        title=f"Refining - {job.refinery.name if hasattr(job, 'refinery') and job.refinery else 'Refinery'}",
-        description=description,
-        event_type="refining",
-        tags=tags,
-        crew_members=[int(current_user.id)],  # ✅ FORCE INTEGER
-        amount=profit,
-        location=str(job.refinery.location) if hasattr(job, 'refinery') and job.refinery and job.refinery.location else None,
-        event_date=datetime.utcnow()
-    )
+    # ✅ CREATE HISTORY EVENT WITH EXPLICIT TYPES
+    history_event = HistoryEvent()
+    history_event.user_id = int(current_user.id)
+    history_event.title = f"Refining - {job.refinery.name if hasattr(job, 'refinery') and job.refinery else 'Refinery'}"
+    history_event.description = description
+    history_event.event_type = "refining"
+    history_event.tags = tags
+    history_event.crew_members = [int(current_user.id)]
+    history_event.amount = profit
+    history_event.location = str(job.refinery.location) if hasattr(job, 'refinery') and job.refinery and job.refinery.location else None
+    history_event.event_date = datetime.utcnow()
     
     db.add(history_event)
     db.commit()
@@ -436,18 +435,17 @@ def create_sale(sale: SaleCreate, current_user: User = Depends(get_current_user)
     else:
         location_str = "Unknown Location"
     
-    # ✅ EXPLICIT INT CASTING
-    history_event = HistoryEvent(
-        user_id=int(current_user.id),  # ✅ FORCE INTEGER
-        title=f"Sale - {material_name}",
-        description=f"Sold {actual_quantity_sold:.2f} SCU at {location_str}. {sale.notes or ''}".strip(),
-        event_type="sale",
-        tags=["trading", "profit"],
-        crew_members=[int(current_user.id)],  # ✅ FORCE INTEGER
-        amount=float(total_revenue),
-        location=location_str,
-        event_date=datetime.utcnow()
-    )
+    # ✅ CREATE HISTORY EVENT WITH EXPLICIT ASSIGNMENT
+    history_event = HistoryEvent()
+    history_event.user_id = int(current_user.id)
+    history_event.title = f"Sale - {material_name}"
+    history_event.description = f"Sold {actual_quantity_sold:.2f} SCU at {location_str}. {sale.notes or ''}".strip()
+    history_event.event_type = "sale"
+    history_event.tags = ["trading", "profit"]
+    history_event.crew_members = [int(current_user.id)]
+    history_event.amount = float(total_revenue)
+    history_event.location = location_str
+    history_event.event_date = datetime.utcnow()
     
     db.add(history_event)
     db.commit()
