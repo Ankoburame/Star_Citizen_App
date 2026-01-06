@@ -1,13 +1,11 @@
 """
 API endpoints pour le système de production (raffinerie, inventaire, ventes).
-FIXED VERSION - Auto-clear + Auto-history
 """
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session, joinedload
 from typing import List, Optional
 from datetime import datetime, timedelta
-from decimal import Decimal
 from pydantic import BaseModel, ConfigDict
 
 from database import get_db
@@ -16,7 +14,6 @@ from models.refining_job import RefiningJob, RefiningJobMaterial
 from models.inventory import Inventory
 from models.sale import Sale
 from models.material import Material
-from models.history_event import HistoryEvent
 from sqlalchemy import text
 from api.auth import get_current_user
 from models.user import User
@@ -55,9 +52,9 @@ class JobMaterialSchema(BaseModel):
 
 class RefiningJobCreate(BaseModel):
     refinery_id: int
-    job_type: str = "mining"
+    job_type: str = "mining"  # 'mining' ou 'salvage'
     total_cost: float
-    processing_time: int
+    processing_time: int  # En minutes
     materials: List[JobMaterialCreate]
     notes: Optional[str] = None
 
@@ -157,29 +154,33 @@ def get_refineries(
 @router.post("/jobs", response_model=RefiningJobSchema)
 def create_refining_job(
     job: RefiningJobCreate, 
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),  # ✅ AJOUTER
     db: Session = Depends(get_db)
 ):
     """Crée un nouveau job de raffinerie."""
     
+    # Vérifier que la raffinerie existe
     refinery = db.query(Refinery).filter(Refinery.id == job.refinery_id).first()
     if not refinery:
         raise HTTPException(status_code=404, detail="Raffinerie non trouvée")
     
+    # Calculer end_time
     end_time = datetime.utcnow() + timedelta(minutes=job.processing_time)
     
+    # Créer le job
     new_job = RefiningJob(
         refinery_id=job.refinery_id,
         job_type=job.job_type,
         total_cost=job.total_cost,
         processing_time=job.processing_time,
         end_time=end_time,
-        user_id=current_user.id,
+        user_id=current_user.id,  # ✅ AJOUTER CETTE LIGNE
         notes=job.notes
     )
     db.add(new_job)
-    db.flush()
+    db.flush()  # Pour obtenir l'ID
     
+    # Ajouter les matériaux
     for mat in job.materials:
         job_material = RefiningJobMaterial(
             job_id=new_job.id,
@@ -191,6 +192,7 @@ def create_refining_job(
     db.commit()
     db.refresh(new_job)
     
+    # Retourner avec relations chargées
     return _build_job_schema(new_job, db)
 
 
@@ -206,11 +208,12 @@ def get_refining_jobs(
     query = db.query(RefiningJob).options(
         joinedload(RefiningJob.refinery),
         joinedload(RefiningJob.materials).joinedload(RefiningJobMaterial.material)
-    ).filter(RefiningJob.user_id == current_user.id)
+        ).filter(RefiningJob.user_id == current_user.id)
     
     if status:
         query = query.filter(RefiningJob.status == status)
     else:
+        # Par défaut, renvoyer processing ET ready (pas collected ni cancelled)
         query = query.filter(RefiningJob.status == "processing")
 
     if refinery_id:
@@ -220,6 +223,7 @@ def get_refining_jobs(
     
     jobs = query.order_by(RefiningJob.end_time).all()
     
+    # Mettre à jour le status des jobs prêts
     for job in jobs:
         if job.check_and_update_status():
             db.commit()
@@ -228,20 +232,13 @@ def get_refining_jobs(
 
 
 @router.get("/jobs/{job_id}", response_model=RefiningJobSchema)
-def get_refining_job(
-    job_id: int,
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
+def get_refining_job(job_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """Récupère un job spécifique."""
-    job = db.query(RefiningJob).filter(
-        RefiningJob.id == job_id,
-        RefiningJob.user_id == current_user.id
-    ).first()
-    
+    job = db.query(RefiningJob).filter(RefiningJob.id == job_id, RefiningJob.user_id == current_user.id).first()
     if not job:
         raise HTTPException(status_code=404, detail="Job non trouvé")
     
+    # Mettre à jour le status si nécessaire
     if job.check_and_update_status():
         db.commit()
     
@@ -249,18 +246,12 @@ def get_refining_job(
 
 
 @router.post("/jobs/{job_id}/collect")
-def collect_refining_job(
-    job_id: int,
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    """Récupère un job terminé et transfère au stock avec auto-history."""
+def collect_refining_job(job_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Récupère un job terminé et transfère au stock."""
+    from decimal import Decimal
+    from models.history_event import HistoryEvent  # ✅ IMPORT
     
-    job = db.query(RefiningJob).filter(
-        RefiningJob.id == job_id,
-        RefiningJob.user_id == current_user.id
-    ).first()
-    
+    job = db.query(RefiningJob).filter(RefiningJob.id == job_id, RefiningJob.user_id == current_user.id).first()
     if not job:
         raise HTTPException(status_code=404, detail="Job non trouvé")
     
@@ -272,15 +263,18 @@ def collect_refining_job(
     material_names = []
     
     for job_mat in job.materials:
+        # Chercher ou créer l'entrée d'inventaire
         inventory = db.query(Inventory).filter(
             Inventory.refinery_id == job.refinery_id,
             Inventory.material_id == job_mat.material_id,
             Inventory.user_id == job.user_id
         ).first()
         
+        # Convertir quantité brute en SCU (÷ 100)
         quantity_scu = Decimal(str(job_mat.quantity_refined)) / Decimal('100')
         total_quantity_scu += quantity_scu
         
+        # Collecter les noms de matériaux
         if hasattr(job_mat, 'material') and job_mat.material:
             material_names.append(job_mat.material.name)
         
@@ -295,22 +289,29 @@ def collect_refining_job(
             )
             db.add(inventory)
     
+    # Marquer le job comme collecté
     job.status = "collected"
     job.collected_at = datetime.utcnow()
     
     # ✅ AUTO-CREATE HISTORY EVENT
+    # Calculer profit/loss
     total_cost = float(job.total_cost or 0)
+    # On ne peut pas calculer le revenu exact ici (pas de prix de vente)
+    # Donc on met juste le coût en négatif
     profit = -total_cost
     
+    # Déterminer tags
     tags = ["refining"]
     if profit < 0:
-        tags.append("cost")
+        tags.append("cost")  # Coût initial
     
+    # Créer description
     materials_str = ", ".join(material_names) if material_names else "materials"
     description = f"Collected {float(total_quantity_scu):.2f} SCU of {materials_str} from refinery."
     if job.notes:
         description += f" Notes: {job.notes}"
     
+    # Créer l'event
     history_event = HistoryEvent(
         user_id=current_user.id,
         title=f"Refining - {job.refinery.name if hasattr(job, 'refinery') and job.refinery else 'Refinery'}",
@@ -318,7 +319,7 @@ def collect_refining_job(
         event_type="refining",
         tags=tags,
         crew_members=[current_user.id],
-        amount=profit,
+        amount=profit,  # Coût négatif pour l'instant
         location=job.refinery.location if hasattr(job, 'refinery') and job.refinery else None,
         event_date=datetime.utcnow()
     )
@@ -326,25 +327,37 @@ def collect_refining_job(
     db.add(history_event)
     db.commit()
     
-    return {
-        "message": "Job collecté avec succès",
-        "job_id": job_id,
-        "history_event_created": True
-    }
+    return {"message": "Job collecté avec succès", "job_id": job_id, "history_event_created": True}
+    # Convertir quantité brute en SCU (÷ 100)
+    from decimal import Decimal  # ← AJOUTER EN HAUT DU FICHIER (ligne ~10)
+
+# Convertir quantité brute en SCU (÷ 100)
+    quantity_scu = Decimal(str(job_mat.quantity_refined)) / Decimal('100')
+
+    if inventory:
+        inventory.add_quantity(quantity_scu)  # ✅ Decimal + Decimal OK
+    else:
+        inventory = Inventory(
+            refinery_id=job.refinery_id,
+            material_id=job_mat.material_id,
+            user_id=job.user_id,
+            quantity=quantity_scu  # ✅ Decimal OK
+        )
+        db.add(inventory)
+    
+    # Marquer le job comme collecté
+    job.status = "collected"
+    job.collected_at = datetime.utcnow()
+    
+    db.commit()
+    
+    return {"message": "Job collecté avec succès", "job_id": job_id}
 
 
 @router.delete("/jobs/{job_id}")
-def cancel_refining_job(
-    job_id: int,
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
+def cancel_refining_job(job_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """Annule un job de raffinerie."""
-    job = db.query(RefiningJob).filter(
-        RefiningJob.id == job_id,
-        RefiningJob.user_id == current_user.id
-    ).first()
-    
+    job = db.query(RefiningJob).filter(RefiningJob.id == job_id, RefiningJob.user_id == current_user.id).first()
     if not job:
         raise HTTPException(status_code=404, detail="Job non trouvé")
     
@@ -373,10 +386,7 @@ def get_inventory(
     query = db.query(Inventory).options(
         joinedload(Inventory.refinery),
         joinedload(Inventory.material)
-    ).filter(
-        Inventory.quantity > min_quantity,
-        Inventory.user_id == current_user.id
-    )
+    ).filter(Inventory.quantity > min_quantity, Inventory.user_id == current_user.id)
     
     if refinery_id:
         query = query.filter(Inventory.refinery_id == refinery_id)
@@ -393,13 +403,11 @@ def get_inventory(
 # ============================================================
 
 @router.post("/sales", response_model=SaleSchema)
-def create_sale(
-    sale: SaleCreate,
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    """Enregistre une vente avec auto-clear du stock et auto-history."""
+def create_sale(sale: SaleCreate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Enregistre une vente avec auto-clear du stock."""
+    from models.history_event import HistoryEvent  # ✅ IMPORT
     
+    # Vérifier l'inventaire
     inventory = db.query(Inventory).filter(
         Inventory.refinery_id == sale.refinery_source_id,
         Inventory.material_id == sale.material_id,
@@ -414,14 +422,17 @@ def create_sale(
     stock_cleared = False
     
     if sale.quantity_sold >= inventory.quantity:
+        # Vendre tout le stock disponible
         actual_quantity_sold = inventory.quantity
         stock_cleared = True
     
+    # Calculer le revenu total
     total_revenue = actual_quantity_sold * sale.unit_price
     
+    # Créer la vente
     new_sale = Sale(
         material_id=sale.material_id,
-        quantity_sold=actual_quantity_sold,
+        quantity_sold=actual_quantity_sold,  # ✅ Quantité ajustée
         unit_price=sale.unit_price,
         total_revenue=total_revenue,
         refining_cost=sale.refining_cost,
@@ -435,23 +446,25 @@ def create_sale(
     
     # ✅ Update ou delete inventory
     if stock_cleared:
+        # Effacer complètement l'inventaire
         db.delete(inventory)
     else:
+        # Retirer du stock
         inventory.remove_quantity(actual_quantity_sold)
     
     # ✅ AUTO-CREATE HISTORY EVENT
     material_name = inventory.material.name if hasattr(inventory, 'material') and inventory.material else "Material"
-    location_name = str(sale.sale_location_id)
+    location_name = new_sale.sale_location.name if hasattr(new_sale, 'sale_location') and new_sale.sale_location else sale.sale_location_id
     
     history_event = HistoryEvent(
         user_id=current_user.id,
         title=f"Sale - {material_name}",
-        description=f"Sold {actual_quantity_sold:.2f} SCU at location {location_name}. {sale.notes or ''}".strip(),
+        description=f"Sold {actual_quantity_sold:.2f} SCU at {location_name}. {sale.notes or ''}".strip(),
         event_type="sale",
         tags=["trading", "profit"],
         crew_members=[current_user.id],
         amount=float(total_revenue),
-        location=location_name,
+        location=str(location_name),
         event_date=datetime.utcnow()
     )
     
@@ -567,6 +580,7 @@ def _build_job_schema(job: RefiningJob, db: Session) -> RefiningJobSchema:
 
 def _build_inventory_schema(inv: Inventory, db: Session) -> InventorySchema:
     """Construit le schema d'inventaire avec prix estimé."""
+    # Récupérer le prix de vente moyen depuis market_prices
     avg_price_query = db.execute(
         text("""
             SELECT AVG(sell_price) as avg_price
