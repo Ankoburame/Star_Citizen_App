@@ -60,7 +60,7 @@ export default function CrewPayoutPage() {
   const loadProfitableEvents = async () => {
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch(`${API_URL}/stats/crew-payout/profitable-events`, {
+      const response = await fetch(`${API_URL}/stats/history/payout/events`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
@@ -90,7 +90,7 @@ export default function CrewPayoutPage() {
     setCalculating(true);
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch(`${API_URL}/stats/crew-payout/calculate`, {
+      const response = await fetch(`${API_URL}/stats/history/payout/calculate`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -122,7 +122,7 @@ export default function CrewPayoutPage() {
     setExecuting(true);
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch(`${API_URL}/stats/crew-payout/execute`, {
+      const response = await fetch(`${API_URL}/stats/history/payout/execute`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
