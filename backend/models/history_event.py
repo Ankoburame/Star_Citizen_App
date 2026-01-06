@@ -3,7 +3,6 @@ Model for history events with tags and crew tracking
 """
 
 from sqlalchemy import Column, Integer, String, Text, ARRAY, DECIMAL, TIMESTAMP, ForeignKey
-from sqlalchemy.sql import func
 from database import Base
 
 
@@ -24,4 +23,4 @@ class HistoryEvent(Base):
     amount = Column(DECIMAL(12, 2))
     location = Column(String(100))
     event_date = Column(TIMESTAMP, nullable=False)
-    created_at = Column(TIMESTAMP, server_default=func.now(), default=func.now())  # ✅ BOTH server_default AND default
+    # ✅ created_at REMOVED - let DB handle it with DEFAULT NOW()
