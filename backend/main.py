@@ -13,13 +13,14 @@ from database import SessionLocal
 from services.pricing_service import ensure_quantanium_price
 
 # Import routers
-from routes import reference, history
+from routes import reference
 from api import production, commerce, market, price_history, auth
 from api.dashboard import router as dashboard_router
 from api.materials import router as materials_router
 from api.pricing import router as pricing_router
 from api.trade import router as trade_router
 from api.ws_dashboard import router as ws_dashboard_router
+
 
 
 @asynccontextmanager
@@ -102,9 +103,6 @@ app.include_router(price_history.router, prefix="/history", tags=["History"])
 
 # Trade
 app.include_router(trade_router, prefix="/trade", tags=["Trade"])
-
-# History
-app.include_router(history.router)
 
 # ============================================================================
 # WEBSOCKET ROUTES

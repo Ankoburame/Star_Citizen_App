@@ -127,12 +127,17 @@ class SaleSchema(BaseModel):
     notes: Optional[str]
 
 
+# ============================================================
+# ENDPOINTS: Refineries
+# ============================================================
+
 @router.get("/refineries", response_model=List[RefinerySchema])
 def get_refineries(
     system: Optional[str] = None,
     active_only: bool = True,
     db: Session = Depends(get_db)
 ):
+    """Liste toutes les raffineries."""
     query = db.query(Refinery)
     
     if system:
@@ -143,12 +148,18 @@ def get_refineries(
     return query.order_by(Refinery.system, Refinery.name).all()
 
 
+# ============================================================
+# ENDPOINTS: Refining Jobs
+# ============================================================
+
 @router.post("/jobs", response_model=RefiningJobSchema)
 def create_refining_job(
     job: RefiningJobCreate, 
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
+    """Crée un nouveau job de raffinerie."""
+    
     refinery = db.query(Refinery).filter(Refinery.id == job.refinery_id).first()
     if not refinery:
         raise HTTPException(status_code=404, detail="Raffinerie non trouvée")
@@ -189,6 +200,7 @@ def get_refining_jobs(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
+    """Liste les jobs de raffinerie."""
     query = db.query(RefiningJob).options(
         joinedload(RefiningJob.refinery),
         joinedload(RefiningJob.materials).joinedload(RefiningJobMaterial.material)
@@ -215,6 +227,7 @@ def get_refining_jobs(
 
 @router.get("/jobs/{job_id}", response_model=RefiningJobSchema)
 def get_refining_job(job_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Récupère un job spécifique."""
     job = db.query(RefiningJob).filter(RefiningJob.id == job_id, RefiningJob.user_id == current_user.id).first()
     if not job:
         raise HTTPException(status_code=404, detail="Job non trouvé")
@@ -227,6 +240,8 @@ def get_refining_job(job_id: int, current_user: User = Depends(get_current_user)
 
 @router.post("/jobs/{job_id}/collect")
 def collect_refining_job(job_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Récupère un job terminé et transfère au stock."""
+    
     job = db.query(RefiningJob).filter(RefiningJob.id == job_id, RefiningJob.user_id == current_user.id).first()
     if not job:
         raise HTTPException(status_code=404, detail="Job non trouvé")
@@ -267,6 +282,7 @@ def collect_refining_job(job_id: int, current_user: User = Depends(get_current_u
 
 @router.delete("/jobs/{job_id}")
 def cancel_refining_job(job_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Annule un job de raffinerie."""
     job = db.query(RefiningJob).filter(RefiningJob.id == job_id, RefiningJob.user_id == current_user.id).first()
     if not job:
         raise HTTPException(status_code=404, detail="Job non trouvé")
@@ -280,6 +296,10 @@ def cancel_refining_job(job_id: int, current_user: User = Depends(get_current_us
     return {"message": "Job annulé", "job_id": job_id}
 
 
+# ============================================================
+# ENDPOINTS: Inventory
+# ============================================================
+
 @router.get("/inventory", response_model=List[InventorySchema])
 def get_inventory(
     refinery_id: Optional[int] = None,
@@ -288,6 +308,7 @@ def get_inventory(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
+    """Liste l'inventaire."""
     query = db.query(Inventory).options(
         joinedload(Inventory.refinery),
         joinedload(Inventory.material)
@@ -303,8 +324,14 @@ def get_inventory(
     return [_build_inventory_schema(inv, db) for inv in inventories]
 
 
+# ============================================================
+# ENDPOINTS: Sales
+# ============================================================
+
 @router.post("/sales", response_model=SaleSchema)
 def create_sale(sale: SaleCreate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Enregistre une vente avec auto-clear du stock."""
+    
     inventory = db.query(Inventory).filter(
         Inventory.refinery_id == sale.refinery_source_id,
         Inventory.material_id == sale.material_id,
@@ -357,6 +384,7 @@ def get_sales(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
+    """Liste les ventes."""
     query = db.query(Sale).options(
         joinedload(Sale.material),
         joinedload(Sale.sale_location),
@@ -382,6 +410,7 @@ def get_sales_stats(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
+    """Statistiques globales des ventes."""
     query = db.query(Sale).filter(Sale.user_id == current_user.id)
     
     if start_date:
@@ -414,7 +443,12 @@ def get_sales_stats(
     }
 
 
+# ============================================================
+# Helper functions
+# ============================================================
+
 def _build_job_schema(job: RefiningJob, db: Session) -> RefiningJobSchema:
+    """Construit le schema d'un job avec toutes les données."""
     materials = []
     for jm in job.materials:
         materials.append(JobMaterialSchema(
@@ -445,6 +479,7 @@ def _build_job_schema(job: RefiningJob, db: Session) -> RefiningJobSchema:
 
 
 def _build_inventory_schema(inv: Inventory, db: Session) -> InventorySchema:
+    """Construit le schema d'inventaire avec prix estimé."""
     avg_price_query = db.execute(
         text("""
             SELECT AVG(sell_price) as avg_price
@@ -473,6 +508,7 @@ def _build_inventory_schema(inv: Inventory, db: Session) -> InventorySchema:
 
 
 def _build_sale_schema(sale: Sale, db: Session) -> SaleSchema:
+    """Construit le schema de vente."""
     return SaleSchema(
         id=sale.id,
         material_id=sale.material_id,
