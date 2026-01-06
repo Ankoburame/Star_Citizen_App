@@ -244,18 +244,17 @@ async def execute_crew_payout(
         if not recipient:
             continue
         
-        # Create payout event
-        payout_event = HistoryEvent(
-            user_id=current_user.id,
-            title=f"Payout - {recipient.username}",
-            description=f"Crew payout sent to {recipient.username}. {transaction.note or ''}".strip(),
-            event_type="payout",
-            tags=["payout", "crew"],
-            crew_members=[current_user.id, recipient.id],
-            amount=-transaction.amount,  # Negative for sender
-            location=None,
-            event_date=datetime.utcnow()
-        )
+        # ✅ CREATE PAYOUT EVENT WITH EXPLICIT ASSIGNMENT
+        payout_event = HistoryEvent()
+        payout_event.user_id = int(current_user.id)
+        payout_event.title = f"Payout - {recipient.username}"
+        payout_event.description = f"Crew payout sent to {recipient.username}. {transaction.note or ''}".strip()
+        payout_event.event_type = "payout"
+        payout_event.tags = ["payout", "crew"]
+        payout_event.crew_members = [int(current_user.id), int(recipient.id)]
+        payout_event.amount = -transaction.amount
+        payout_event.location = None
+        payout_event.event_date = datetime.utcnow()
         
         db.add(payout_event)
         created_events.append(payout_event)
